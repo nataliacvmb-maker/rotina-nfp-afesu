@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Relatório NFP · AFESU · Jan 2025 – Dez 2025</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --white:      #FFFFFF;
+  --bg-panel:   #F7F7F7;
+  --border:     #E8E8E8;
+  --text:       #1A1A1A;
+  --muted:      #666666;
+  --orange:     #F0A020;
+  --orange-lt:  #FFF8EC;
+  --black:      #000000;
+}
+
+html, body {
+  font-family: 'Inter', sans-serif;
+  background: var(--white);
+  color: var(--text);
+  overflow: hidden;
+  height: 100%;
+  margin: 0;
+}
+
+/* ── Slider container ── */
+#slider {
+  display: flex;
+  flex-direction: row;
+  width: 100vw;
+  height: 100vh;
+  overflow-x: scroll;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Slides ── */
+.slide {
+  flex: none;
+  width: 100vw;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 56px 60px 44px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  scroll-snap-align: start;
+  position: relative;
+  background: var(--white);
+  box-sizing: border-box;
+}
+
+/* ── Typography ── */
+.slide-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--orange);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+h1 { font-size: clamp(2.4rem,5vw,4rem); font-weight: 900; line-height: 1.08; color: var(--black); letter-spacing: -1.5px; }
+h2 { font-size: clamp(1.4rem,2.5vw,2rem); font-weight: 800; color: var(--black); letter-spacing: -0.5px; margin-bottom: 4px; }
+.subtitle { color: var(--muted); font-size: 13px; margin-bottom: 28px; font-weight: 400; }
+.orange { color: var(--orange); }
+.muted  { color: var(--muted); }
+.black  { color: var(--black); }
+
+/* ── Divider ── */
+.divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+/* ── KPI Pills (capa / encerramento) ── */
+.pill-row { display: flex; gap: 14px; flex-wrap: wrap; }
+.pill {
+  flex: 1; min-width: 160px;
+  background: var(--white);
+  border: 1.5px solid var(--orange);
+  border-radius: 12px;
+  padding: 18px 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.pill-val {
+  font-size: clamp(1rem,1.8vw,1.6rem);
+  font-weight: 900;
+  color: var(--orange);
+  line-height: 1;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pill-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ── KPI Cards (visão geral) ── */
+.kpi-row { display: grid; gap: 16px; }
+.k4 { grid-template-columns: repeat(4,1fr); }
+.k3 { grid-template-columns: repeat(3,1fr); }
+.k2 { grid-template-columns: repeat(2,1fr); }
+
+.kcard {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 18px;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.kcard-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--orange);
+  margin-bottom: 12px;
+}
+.kcard-dot.gray { background: var(--muted); }
+.kcard-lbl {
+  font-size: 10px; font-weight: 700; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+}
+.kcard-val {
+  font-size: clamp(1.4rem,2.2vw,2rem);
+  font-weight: 900; color: var(--black); line-height: 1;
+}
+.kcard-val.orange { color: var(--orange); }
+.kcard-sub { font-size: 11px; color: var(--muted); margin-top: 6px; }
+.kbadge {
+  position: absolute; top: 14px; right: 14px;
+  font-size: 10px; font-weight: 700; padding: 3px 9px;
+  border-radius: 20px;
+}
+.kbadge.green { background: rgba(0,180,80,.1); color: #00a84f; }
+.kbadge.gray  { background: var(--bg-panel);   color: var(--muted); }
+.kbadge.warn  { background: rgba(240,100,0,.1); color: #e06000; }
+
+/* ── Chart area ── */
+.chart-area {
+  background: var(--bg-panel);
+  border-radius: 12px;
+  padding: 20px 20px 16px;
+  margin-top: 18px;
+}
+.chart-area canvas { max-height: 260px; }
+
+/* ── Two-col / Three-col ── */
+.two-col   { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+/* ── Modal cards (slide 3) ── */
+.modal-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--orange);
+  border-radius: 12px;
+  padding: 24px 22px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.modal-card.gray-accent { border-left-color: var(--muted); }
+.modal-card-tag {
+  font-size: 10px; font-weight: 800; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 10px;
+}
+.modal-val {
+  font-size: clamp(1.6rem,2.6vw,2.2rem);
+  font-weight: 900; color: var(--black); line-height: 1;
+  margin-bottom: 14px;
+}
+.modal-val.orange { color: var(--orange); }
+.modal-row {
+  display: flex; justify-content: space-between;
+  font-size: 12px; color: var(--muted);
+  padding: 7px 0; border-top: 1px solid var(--border);
+}
+.modal-row span:last-child { color: var(--text); font-weight: 600; }
+
+/* ── Ticket highlight ── */
+.ticket-hl {
+  text-align: center; padding: 14px 0;
+}
+.ticket-hl .big-x {
+  font-size: clamp(2rem,4vw,3.2rem);
+  font-weight: 900; color: var(--orange); line-height: 1;
+}
+.ticket-hl p { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+/* ── Tables ── */
+.tbl {
+  width: 100%; border-collapse: collapse; font-size: 12px;
+}
+.tbl th {
+  background: var(--bg-panel);
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1.5px; padding: 11px 14px;
+  text-align: left; color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+.tbl td { padding: 10px 14px; color: var(--text); }
+.tbl tr:not(:last-child) td { border-bottom: 1px solid var(--border); }
+.tbl-wrap {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  overflow-y: auto;
+  max-height: 360px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+/* ── Quality highlight ── */
+.match-big {
+  font-size: clamp(3rem,6vw,5rem);
+  font-weight: 900; color: var(--black);
+  line-height: 1; letter-spacing: -2px;
+}
+.match-big span { color: var(--orange); }
+.info-box {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--orange);
+  border-radius: 10px;
+  padding: 14px 18px;
+  font-size: 12px; color: var(--muted); line-height: 1.7;
+}
+.info-box strong { color: var(--text); }
+.metric-row {
+  display: flex; gap: 14px; flex-wrap: wrap; margin: 14px 0;
+}
+.metric-pill {
+  flex: 1; min-width: 110px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  text-align: center;
+}
+.metric-pill .mpv {
+  font-size: 1.5rem; font-weight: 900; color: var(--black); line-height: 1;
+}
+.metric-pill .mpl {
+  font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--muted); margin-top: 4px;
+}
+
+/* ── Capa ── */
+.capa-inner { max-width: 900px; }
+.capa-tagline {
+  font-size: 10px; font-weight: 700; letter-spacing: 3px;
+  text-transform: uppercase; color: var(--orange); margin-bottom: 18px;
+}
+.capa-title { font-size: clamp(1rem,1.4vw,1.2rem); font-weight: 700; color: var(--black); }
+.capa-sub  { font-size: 13px; color: var(--muted); margin: 12px 0 36px; line-height: 1.8; }
+.logo-text {
+  font-size: 1.1rem; font-weight: 900;
+  color: var(--black); letter-spacing: -0.5px;
+}
+
+/* ── Footer ── */
+.slide-foot {
+  margin-top: auto; padding-top: 20px;
+  font-size: 10px; color: var(--muted); letter-spacing: 2px;
+  text-transform: uppercase;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.slide-foot .logo-text { font-size: 14px; }
+
+/* ── Nav dots ── */
+#nav {
+  position: fixed; bottom: 20px; left: 50%;
+  transform: translateX(-50%);
+  display: flex; flex-direction: row; gap: 10px; z-index: 200;
+  background: rgba(255,255,255,0.7);
+  padding: 8px 14px;
+  border-radius: 20px;
+  backdrop-filter: blur(4px);
+}
+.dot-btn {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--border); border: none; cursor: pointer;
+  transition: all .25s; padding: 0;
+}
+.dot-btn.on {
+  background: var(--orange); transform: scale(1.3);
+}
+
+/* ── Closing ── */
+.slide-close { align-items: center; text-align: center; }
+
+@media (max-width: 960px) {
+  .slide { padding: 40px 24px 32px; }
+  .k4,.k3 { grid-template-columns: repeat(2,1fr); }
+  .two-col,.three-col { grid-template-columns: 1fr; }
+  #nav { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- Nav dots -->
+<div id="nav">
+  <button class="dot-btn on" onclick="go(0)" title="Capa"></button>
+  <button class="dot-btn"   onclick="go(1)" title="Visão Geral"></button>
+  <button class="dot-btn"   onclick="go(2)" title="Modalidades"></button>
+  <button class="dot-btn"   onclick="go(3)" title="Contribuintes"></button>
+  <button class="dot-btn"   onclick="go(4)" title="Estabelecimentos"></button>
+  <button class="dot-btn"   onclick="go(5)" title="Qualidade"></button>
+  <button class="dot-btn"   onclick="go(6)" title="Projeção 2026"></button>
+  <button class="dot-btn"   onclick="go(7)" title="Encerramento"></button>
+</div>
+
+<div id="slider">
+<!-- ═══════ SLIDE 1 · CAPA ═══════ -->
+<section class="slide" id="s0">
+  <div class="capa-inner">
+    <p class="capa-tagline">TIME CAPTAÇÃO</p>
+
+    <h1>
+      Programa<br>
+      Nota Fiscal Paulista<br>
+      <span class="orange" style="font-size:1.15em;">AFESU</span>
+    </h1>
+
+    <p class="capa-sub">
+      Análise consolidada &middot; Elaborado pelo Time de Captação<br>
+      <span style="color:var(--muted);">Jan 2025 – Dez 2025</span>
+    </p>
+
+    <div class="pill-row">
+      <div class="pill">
+        <div class="pill-val">R$605,1K</div>
+        <div class="pill-lbl">Créditos gerados</div>
+      </div>
+      <div class="pill">
+        <div class="pill-val">1,3Mi</div>
+        <div class="pill-lbl">Pedidos processados</div>
+      </div>
+      <div class="pill">
+        <div class="pill-val">348</div>
+        <div class="pill-lbl">CPFs ativos</div>
+      </div>
+      <div class="pill">
+        <div class="pill-val">12</div>
+        <div class="pill-lbl">Meses analisados</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-foot">
+    <span>AFESU &middot; Nota Fiscal Paulista &middot; Jan 2025 – Dez 2025</span>
+    <span class="logo-text">TIME</span>
+  </div>
+</section>
+
+<!-- ═══════ SLIDE 2 · VISÃO GERAL ═══════ -->
+<section class="slide" id="s1">
+  <p class="slide-label">01 &middot; VISÃO GERAL</p>
+  <h2>Resultados Consolidados do Programa NFP</h2>
+  <p class="subtitle">Jan 2025 – Dez 2025</p>
+
+  <div class="kpi-row k4">
+    <div class="kcard">
+      <div class="kcard-dot"></div>
+      <p class="kcard-lbl">Créditos Totais</p>
+      <p class="kcard-val orange">R$605,1K</p>
+      <p class="kcard-sub">Acumulado no período</p>
+    </div>
+    <div class="kcard">
+      <div class="kcard-dot"></div>
+      <p class="kcard-lbl">Notas Aceitas</p>
+      <p class="kcard-val">697,967</p>
+      <p class="kcard-sub">de 1,322,189 processadas</p>
+      <span class="kbadge green">52.8% aprovação</span>
+    </div>
+    <div class="kcard">
+      <div class="kcard-dot gray"></div>
+      <p class="kcard-lbl">CPFs Ativos</p>
+      <p class="kcard-val">348</p>
+      <p class="kcard-sub">+1,279,414 total cadastrados</p>
+    </div>
+    <div class="kcard">
+      <div class="kcard-dot gray"></div>
+      <p class="kcard-lbl">Média Mensal</p>
+      <p class="kcard-val">R$50,4K</p>
+      <p class="kcard-sub">em créditos</p>
+    </div>
+  </div>
+
+  <div class="chart-area">
+    <canvas id="chartOverview"></canvas>
+  </div>
+
+  <div class="slide-foot">
+    <span>AFESU &middot; NFP</span>
+    <span class="logo-text">TIME</span>
+  </div>
+</section>
+
+<!-- ═══════ SLIDE 3 · MODALIDADES ═══════ -->
+<section class="slide" id="s2">
+  <p class="slide-label">02 &middot; MODALIDADES</p>
+  <h2>Análise por Tipo de Doação</h2>
+  <p class="subtitle">Comparativo entre doação automática e notas digitadas</p>
+
+  <div class="two-col" style="margin-bottom:14px;align-items:start;">
+    <div class="modal-card">
+      <p class="modal-card-tag">Doação Automática</p>
+      <div class="modal-val orange">R$405,2K</div>
+      <div class="modal-row"><span>Notas</span><span>41,793</span></div>
+      <div class="modal-row"><span>Ticket médio / nota</span><span>R$9,69</span></div>
+      <div class="modal-row"><span>% dos créditos</span><span>67.0%</span></div>
+    </div>
+    <div class="modal-card gray-accent">
+      <p class="modal-card-tag">Notas Digitadas</p>
+      <div class="modal-val">R$199,9K</div>
+      <div class="modal-row"><span>Notas</span><span>1,049,452</span></div>
+      <div class="modal-row"><span>Ticket médio / nota</span><span>R$0,19</span></div>
+      <div class="modal-row"><span>% dos créditos</span><span>33.0%</span></div>
+    </div>
+  </div>
+
+  <div class="ticket-hl">
+    <div class="big-x">50.9&times; maior ticket</div>
+    <p>Ticket automático versus ticket de notas digitadas</p>
+  </div>
+
+  <div class="chart-area">
+    <canvas id="chartModalidade"></canvas>
+  </div>
+
+  <div class="slide-foot">
+    <span>AFESU &middot; NFP</span>
+    <span class="logo-text">TIME</span>
+  </div>
+</section>
+
+<!-- ═══════ SLIDE 4 · CONTRIBUINTES ═══════ -->
+<section class="slide" id="s3">
+  <p class="slide-label">03 &middot; CONTRIBUINTES</p>
+  <h2>Base de Contribuintes Ativos</h2>
+  <p class="subtitle">Análise dos doadores identificados via cruzamento de dados</p>
+
+  <div class="kpi-row k3" style="margin-bottom:18px;">
+    <div class="kcard">
+      <div class="kcard-dot"></div>
+      <p class="kcard-lbl">CPFs únicos</p>
+      <p class="kcard-val orange">348</p>
+      <p class="kcard-sub">Total no período</p>
+    </div>
+    <div class="kcard">
+      <div class="kcard-dot gray"></div>
+      <p class="kcard-lbl">CPFs ativos — último mês</p>
+      <p class="kcard-val">336</p>
+      <p class="kcard-sub">Dez 2025</p>
+      <span class='kbadge green'>+25</span>
+    </div>
+    <div class="kcard">
+      <div class="kcard-dot gray"></div>
+      <p class="kcard-lbl">Crédito médio / CPF</p>
+      <p class="kcard-val">R$1,7K</p>
+      <p class="kcard-sub">No período completo</p>
+    </div>
+  </div>
+
+  <div class="two-col" style="align-items:start;">
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>#</th><th>CPF</th><th>Notas</th><th>Crédito Total</th><th>% do total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style=''><td style='text-align:center;color:#666666'>1</td><td style='font-family:monospace'>037.***.***8-58</td><td style='text-align:center'>308,193</td><td>R$46,1K</td><td style='text-align:center;color:#666666'>7.6%</td></tr>
+<tr style='background:#F7F7F7;'><td style='text-align:center;color:#666666'>2</td><td style='font-family:monospace'>089.***.***8-82</td><td style='text-align:center'>163,387</td><td>R$39,6K</td><td style='text-align:center;color:#666666'>6.6%</td></tr>
+<tr style=''><td style='text-align:center;color:#666666'>3</td><td style='font-family:monospace'>355.***.***8-65</td><td style='text-align:center'>319,895</td><td>R$25,0K</td><td style='text-align:center;color:#666666'>4.1%</td></tr>
+<tr style='background:#F7F7F7;'><td style='text-align:center;color:#666666'>4</td><td style='font-family:monospace'>366.***.***8-03</td><td style='text-align:center'>146,955</td><td>R$17,2K</td><td style='text-align:center;color:#666666'>2.8%</td></tr>
+<tr style=''><td style='text-align:center;color:#666666'>5</td><td style='font-family:monospace'>324.***.***8-61</td><td style='text-align:center'>412</td><td>R$13,6K</td><td style='text-align:center;color:#666666'>2.2%</td></tr>
+<tr style='background:#F7F7F7;'><td style='text-align:center;color:#666666'>6</td><td style='font-family:monospace'>164.***.***8-07</td><td style='text-align:center'>230</td><td>R$12,2K</td><td style='text-align:center;color:#666666'>2.0%</td></tr>
+<tr style=''><td style='text-align:center;color:#666666'>7</td><td style='font-family:monospace'>116.***.***7-05</td><td style='text-align:center'>364</td><td>R$10,6K</td><td style='text-align:center;color:#666666'>1.7%</td></tr>
+<tr style='background:#F7F7F7;'><td style='text-align:center;color:#666666'>8</td><td style='font-family:monospace'>172.***.***8-16</td><td style='text-align:center'>10,082</td><td>R$10,5K</td><td style='text-align:center;color:#666666'>1.7%</td></tr>
+<tr style=''><td style='text-align:center;color:#666666'>9</td><td style='font-family:monospace'>350.***.***8-41</td><td style='text-align:center'>404</td><td>R$10,2K</td><td style='text-align:center;color:#666666'>1.7%</td></tr>
+<tr style='background:#F7F7F7;'><td style='text-align:center;color:#666666'>10</td><td style='font-family:monospace'>111.***.***7-09</td><td style='text-align:center'>371</td><td>R$8,8K</td><td style='text-align:center;color:#666666'>1.5%</td></tr>
+
+        </tbody>
+      </table>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:0;">
+      <p style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">Top 5 por crédito</p>
+      <div style="position:relative;height:220px;">
+        <canvas id="chartDonut"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-foot">
+    <span>AFESU &middot; CPF mascarado para privacidade</span>
+    <span class="logo-text">TIME</span>
+  </div>
+</section>
+
+<!-- ═══════ SLIDE 5 · ESTABELECIMENTOS ═══════ -->
+<section class="slide" id="s4">
+  <p class="slide-label">04 &middot; ESTABELECIMENTOS</p>
+  <h2>Análise por Estabelecimento</h2>
+  <p class="subtitle">Top 15 emitentes por crédito gerado para a AFESU</p>
+
+  <div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:18px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+    <canvas id="chartEmitentes" style="max-height:240px;"></canvas>
+  </div>
+
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>Emitente</th>
+          <th>Nº Notas</th>
+          <th>Crédito Total (R$)</th>
+          <th>Ticket Médio</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style=''><td>CASA SANTA LUZIA IMPORTADORA LTDA</td><td style='text-align:center'>8,459</td><td>R$26,7K</td><td>R$3,16</td></tr>
+<tr style='background:#F7F7F7;'><td>SUPERMERCADO CASTELO DA SERRA LTDA</td><td style='text-align:center'>34,247</td><td>R$17,7K</td><td>R$0,52</td></tr>
+<tr style=''><td>SUPERMERCADO CASTELO DA SERRA LTDA</td><td style='text-align:center'>61,482</td><td>R$15,7K</td><td>R$0,26</td></tr>
+<tr style='background:#F7F7F7;'><td>NOVA COMERCIO VAREJISTA LTDA</td><td style='text-align:center'>91</td><td>R$6,7K</td><td>R$73,10</td></tr>
+<tr style=''><td>Linus do Brasil Acessorios Ltda.</td><td style='text-align:center'>333</td><td>R$6,6K</td><td>R$19,83</td></tr>
+<tr style='background:#F7F7F7;'><td>CALCEVALE CALCADOS LTDA</td><td style='text-align:center'>3,614</td><td>R$5,3K</td><td>R$1,48</td></tr>
+<tr style=''><td>NOEMI CASSIANO DE FREITAS</td><td style='text-align:center'>12</td><td>R$4,5K</td><td>R$371,37</td></tr>
+<tr style='background:#F7F7F7;'><td>COM DE ALIMENTOS STA BARBARA LT</td><td style='text-align:center'>20</td><td>R$4,4K</td><td>R$222,47</td></tr>
+<tr style=''><td>Super Doce Maringa Ltda</td><td style='text-align:center'>3,472</td><td>R$3,7K</td><td>R$1,06</td></tr>
+<tr style='background:#F7F7F7;'><td>IGUASPORT LTDA</td><td style='text-align:center'>47</td><td>R$3,3K</td><td>R$69,54</td></tr>
+<tr style=''><td>LOJAS RENNER S.A</td><td style='text-align:center'>28</td><td>R$3,2K</td><td>R$115,76</td></tr>
+<tr style='background:#F7F7F7;'><td>I-RETAIL SERVICOS DE CONSULTORIA DE MODA</td><td style='text-align:center'>12</td><td>R$3,1K</td><td>R$257,49</td></tr>
+<tr style=''><td>INDITEX BRASIL LTDA</td><td style='text-align:center'>34</td><td>R$2,9K</td><td>R$85,35</td></tr>
+<tr style='background:#F7F7F7;'><td>PAIVA E SOUZA COMERCIO DE CALCADOS LTDA</td><td style='text-align:center'>2,408</td><td>R$2,8K</td><td>R$1,18</td></tr>
+<tr style=''><td>INDITEX BRASIL LTDA</td><td style='text-align:center'>18</td><td>R$2,5K</td><td>R$137,76</td></tr>
+
+      </tbody>
+    </table>
+  </div>
+
+  <div class="slide-foot">
+    <span>AFESU &middot; NFP</span>
+    <span class="logo-text">TIME</span>
+  </div>
+</section>
+
+<!-- ═══════ SLIDE 6 · QUALIDADE ═══════ -->
+<section class="slide" id="s5">
+  <p class="slide-label">05 &middot; QUALIDADE</p>
+  <h2>Integridade do Cruzamento de Dados</h2>
+  <p class="subtitle">Cobertura do JOIN Consulta &times; Pedido e situação dos créditos</p>
+
+  <div style="margin:10px 0 20px;">
+    <div class="match-big">76.1<span>%</span></div>
+    <p style="font-size:14px;color:var(--muted);margin-top:6px;">de cobertura no cruzamento das bases</p>
+  </div>
+
+  <div class="metric-row">
+    <div class="metric-pill">
+      <div class="mpv">1,322,189</div>
+      <div class="mpl">Notas Consulta</div>
+    </div>
+    <div class="metric-pill">
+      <div class="mpv">1,279,414</div>
+      <div class="mpl">Notas Pedido</div>
+    </div>
+    <div class="metric-pill">
+      <div class="mpv" style="color:var(--orange);">1,006,351</div>
+      <div class="mpl">Matched</div>
+    </div>
+    <div class="metric-pill">
+      <div class="mpv" style="color:var(--muted);">315,838</div>
+      <div class="mpl">Não matched</div>
+    </div>
+  </div>
+
+  <div class="two-col" style="align-items:start;margin-top:6px;">
+    <div>
+      <p style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Situação dos créditos</p>
+      <div class="kpi-row k2" style="gap:12px;">
+        <div class="kcard">
+          <p class="kcard-lbl">Calculado</p>
+          <p class="kcard-val orange">697,967</p>
+          <p class="kcard-sub">créditos aprovados</p>
+          <span class="kbadge green">52.8%</span>
+        </div>
+        <div class="kcard">
+          <p class="kcard-lbl">Rejeitado</p>
+          <p class="kcard-val">624,222</p>
+          <p class="kcard-sub">R$189,4K perdidos</p>
+          <span class="kbadge warn">47.2%</span>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="info-box">
+        <strong>O que significa cada situação?</strong><br>
+        <strong>Calculado</strong> — crédito aprovado e disponível.<br>
+        <strong>Aguardando</strong> — nota em análise pela SEFAZ.<br>
+        <strong>Cancelado / Expirado</strong> — prazo perdido ou nota inválida.
+      </div>
+      <div class="info-box" style="border-left-color:var(--muted);">
+        A diferença de ~24% entre as bases decorre do lag da SEFAZ: notas emitidas nos
+        últimos meses do período ainda não constam no arquivo de Pedido exportado.
+      </div>
+    </div>
+  </div>
+
+  <div class="slide-foot">
+    <span>AFESU &middot; Margem: ±23.9% (notas sem match)</span>
+    <span class="logo-text">TIME</span>
+  </div>
+</section>
+
+<!-- ═══════ SLIDE 7 · PROJEÇÃO 2026 ═══════ -->
+<section class="slide" id="s6">
+  <p class="slide-label">06 &middot; PROJEÇÃO</p>
+  <h2>Meta: 500 CPFs &middot; Doação Automática</h2>
+  <p class="subtitle">Base: 199 CPFs &middot; +38/mês a partir de Maio &middot; R$74/CPF/mês &middot; lag de 4 meses</p>
+
+  <div class="two-col" style="align-items:start;gap:20px;">
+    <div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:20px;height:300px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+      <canvas id="chartProjecao" style="height:100%;"></canvas>
+    </div>
+    <div class="tbl-wrap" style="max-height:300px;">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Mês</th><th>+CPFs</th><th>Total</th><th>Gerando</th><th>Receita Est.</th><th>Acumulado</th>
+          </tr>
+        </thead>
+        <tbody><tr style=''><td>Jan/2026</td><td style='text-align:center;color:#666666'>–</td><td style='text-align:center'>199</td><td style='text-align:center'>–</td><td>–</td><td>–</td></tr>
+<tr style=''><td>Fev/2026</td><td style='text-align:center;color:#666666'>–</td><td style='text-align:center'>199</td><td style='text-align:center'>–</td><td>–</td><td>–</td></tr>
+<tr style=''><td>Mar/2026</td><td style='text-align:center;color:#666666'>–</td><td style='text-align:center'>199</td><td style='text-align:center'>–</td><td>–</td><td>–</td></tr>
+<tr style=''><td>Abr/2026</td><td style='text-align:center;color:#666666'>–</td><td style='text-align:center'>199</td><td style='text-align:center'>–</td><td>–</td><td>–</td></tr>
+<tr style=''><td>Mai/2026</td><td style='text-align:center;color:#666666'>+38</td><td style='text-align:center'>237</td><td style='text-align:center'>199</td><td>R$14,7K</td><td>R$14,7K</td></tr>
+<tr style=''><td>Jun/2026</td><td style='text-align:center;color:#666666'>+38</td><td style='text-align:center'>275</td><td style='text-align:center'>237</td><td>R$17,5K</td><td>R$32,3K</td></tr>
+<tr style=''><td>Jul/2026</td><td style='text-align:center;color:#666666'>+38</td><td style='text-align:center'>313</td><td style='text-align:center'>275</td><td>R$20,4K</td><td>R$52,6K</td></tr>
+<tr style=''><td>Ago/2026</td><td style='text-align:center;color:#666666'>+38</td><td style='text-align:center'>351</td><td style='text-align:center'>313</td><td>R$23,2K</td><td>R$75,8K</td></tr>
+<tr style='background:#FFF8EC;font-weight:600;'><td>Set/2026</td><td style='text-align:center;color:#666666'>+38</td><td style='text-align:center'>389</td><td style='text-align:center'>351</td><td>R$26,0K</td><td>R$101,8K</td></tr>
+<tr style=''><td>Out/2026</td><td style='text-align:center;color:#666666'>+38</td><td style='text-align:center'>427</td><td style='text-align:center'>389</td><td>R$28,8K</td><td>R$130,5K</td></tr>
+<tr style=''><td>Nov/2026</td><td style='text-align:center;color:#666666'>+38</td><td style='text-align:center'>465</td><td style='text-align:center'>427</td><td>R$31,6K</td><td>R$162,1K</td></tr>
+<tr style='background:#FFF3E0;font-weight:700;'><td>Dez/2026</td><td style='text-align:center;color:#666666'>+38</td><td style='text-align:center'>503</td><td style='text-align:center'>465</td><td>R$34,4K</td><td>R$196,5K</td></tr>
+</tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide-foot">
+    <span>AFESU &middot; Projeção 2026 &middot; Estimativa baseada na tendência atual</span>
+    <span class="logo-text">TIME</span>
+  </div>
+</section>
+
+<!-- ═══════ SLIDE 8 · ENCERRAMENTO ═══════ -->
+<section class="slide slide-close" id="s7">
+  <p style="font-size:clamp(2rem,4vw,3rem);font-weight:300;color:var(--muted);line-height:1;">Obrigado,</p>
+  <h1 style="font-size:clamp(3rem,7vw,5.5rem);color:var(--orange);letter-spacing:-2px;margin-bottom:16px;">AFESU</h1>
+  <p style="font-size:14px;color:var(--muted);margin-bottom:44px;">Uma parceria construída com propósito.</p>
+
+  <div class="pill-row" style="justify-content:center;max-width:860px;margin:0 auto 36px;">
+    <div class="pill">
+      <div class="pill-val">R$605,1K</div>
+      <div class="pill-lbl">Créditos totais</div>
+    </div>
+    <div class="pill">
+      <div class="pill-val">697,967</div>
+      <div class="pill-lbl">Notas aceitas</div>
+    </div>
+    <div class="pill">
+      <div class="pill-val">348</div>
+      <div class="pill-lbl">CPFs cadastrados</div>
+    </div>
+    <div class="pill">
+      <div class="pill-val">12</div>
+      <div class="pill-lbl">Meses analisados</div>
+    </div>
+  </div>
+
+  <p style="font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;">
+    Time de Captação &middot; Jan 2025 – Dez 2025 &middot; Elaborado por Data
+  </p>
+
+  <div class="slide-foot" style="margin-top:40px;width:100%;">
+    <span></span>
+    <span class="logo-text">TIME</span>
+  </div>
+</section>
+</div><!-- /#slider -->
+
+<!-- ═══════ Scripts ═══════ -->
+<script>
+// ── Navigation ──────────────────────────────────────────
+const slider = document.getElementById('slider');
+const slides = document.querySelectorAll('.slide');
+const dots   = document.querySelectorAll('.dot-btn');
+
+function go(i) {
+  slider.scrollTo({ left: i * window.innerWidth, behavior: 'smooth' });
+}
+
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const i = [...slides].indexOf(e.target);
+      dots.forEach(d => d.classList.remove('on'));
+      if (dots[i]) dots[i].classList.add('on');
+    }
+  });
+}, { root: slider, threshold: 0.5 });
+slides.forEach(s => obs.observe(s));
+
+// ── Defaults ────────────────────────────────────────────
+Chart.defaults.color       = '#666666';
+Chart.defaults.borderColor = '#E8E8E8';
+Chart.defaults.font.family = 'Inter';
+const ORANGE = '#F0A020';
+const GRAY   = '#CCCCCC';
+const BLUE   = '#4A90D9';
+const GRID   = '#E8E8E8';
+
+function fmtBRL(v) {
+  return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+// ── Slide 2: Visão Geral ─────────────────────────────────
+const labels       = ["Jan 2025", "Fev 2025", "Mar 2025", "Abr 2025", "Mai 2025", "Jun 2025", "Jul 2025", "Ago 2025", "Set 2025", "Out 2025", "Nov 2025", "Dez 2025"];
+const dataCreditos = [38994.47, 33751.29, 27012.5, 38937.93, 47041.38, 43553.7, 32048.75, 65638.0, 40146.88, 45611.86, 51078.2, 90693.69];
+const dataCPFs     = [215, 215, 213, 228, 233, 245, 248, 248, 301, 309, 311, 336];
+
+new Chart(document.getElementById('chartOverview'), {
+  data: {
+    labels,
+    datasets: [
+      {
+        type: 'bar', label: 'Créditos (R$)',
+        data: dataCreditos,
+        backgroundColor: 'rgba(240,160,32,0.75)',
+        borderColor: ORANGE, borderWidth: 0, borderRadius: 4,
+        yAxisID: 'y',
+      },
+      {
+        type: 'line', label: 'CPFs ativos',
+        data: dataCPFs,
+        borderColor: BLUE, backgroundColor: 'rgba(74,144,217,0.08)',
+        pointBackgroundColor: BLUE, pointRadius: 4,
+        tension: 0.35, fill: false,
+        yAxisID: 'y2',
+      },
+    ],
+  },
+  options: {
+    responsive: true,
+    interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { labels: { color: '#666666', boxWidth: 12, font: { size: 11 } } } },
+    scales: {
+      x:  { grid: { display: false }, ticks: { color: '#666666', font: { size: 10 } } },
+      y:  { position: 'left',  grid: { color: GRID },
+             ticks: { callback: v => fmtBRL(v), color: '#666666', font: { size: 10 } } },
+      y2: { position: 'right', grid: { drawOnChartArea: false },
+             ticks: { callback: v => v + ' CPFs', color: '#666666', font: { size: 10 } } },
+    },
+  },
+});
+
+// ── Slide 3: Modalidades (stacked bar) ──────────────────
+const dataAuto = [26020.92, 24264.27, 20150.55, 30786.78, 38571.46, 35454.21, 25060.35, 30716.2, 27563.16, 34205.91, 40731.73, 71639.75];
+const dataDig  = [12973.55, 9487.02, 6861.95, 8151.15, 8469.92, 8099.49, 6988.4, 34921.8, 12583.72, 11405.95, 10346.47, 19053.94];
+
+new Chart(document.getElementById('chartModalidade'), {
+  type: 'bar',
+  data: {
+    labels,
+    datasets: [
+      {
+        label: 'Automática',
+        data: dataAuto,
+        backgroundColor: 'rgba(240,160,32,0.8)',
+        borderColor: ORANGE, borderWidth: 0, borderRadius: 3,
+        stack: 's',
+      },
+      {
+        label: 'Digitada',
+        data: dataDig,
+        backgroundColor: 'rgba(180,180,180,0.5)',
+        borderColor: GRAY, borderWidth: 0, borderRadius: 3,
+        stack: 's',
+      },
+    ],
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { labels: { color: '#666666', boxWidth: 12, font: { size: 11 } } } },
+    scales: {
+      x: { grid: { display: false }, stacked: true, ticks: { color: '#666666', font: { size: 10 } } },
+      y: { grid: { color: GRID }, stacked: true,
+            ticks: { callback: v => fmtBRL(v), color: '#666666', font: { size: 10 } } },
+    },
+  },
+});
+
+// ── Slide 4: Donut ───────────────────────────────────────
+const donutLabels = ["037.***.***8-58", "089.***.***8-82", "355.***.***8-65", "366.***.***8-03", "324.***.***8-61"];
+const donutData   = [46125.5, 39636.56, 25015.92, 17234.53, 13581.49];
+
+if (donutData.length > 0) {
+  new Chart(document.getElementById('chartDonut'), {
+    type: 'doughnut',
+    data: {
+      labels: donutLabels,
+      datasets: [{
+        data: donutData,
+        backgroundColor: [
+          'rgba(240,160,32,0.85)',
+          'rgba(240,160,32,0.6)',
+          'rgba(240,160,32,0.4)',
+          'rgba(200,200,200,0.6)',
+          'rgba(180,180,180,0.4)',
+        ],
+        borderColor: '#FFFFFF',
+        borderWidth: 2,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#666666', font: { size: 10 }, boxWidth: 10 } },
+      },
+      cutout: '62%',
+    },
+  });
+}
+
+// ── Slide 5: Emitentes (horizontal bar) ─────────────────
+const emLabels = ["CASA SANTA LUZIA IMPORTADORA L", "SUPERMERCADO CASTELO DA SERRA ", "SUPERMERCADO CASTELO DA SERRA ", "NOVA COMERCIO VAREJISTA LTDA", "Linus do Brasil Acessorios Ltd", "CALCEVALE CALCADOS LTDA", "NOEMI CASSIANO DE FREITAS", "COM DE ALIMENTOS STA BARBARA L", "Super Doce Maringa Ltda", "IGUASPORT LTDA", "LOJAS RENNER S.A", "I-RETAIL SERVICOS DE CONSULTOR", "INDITEX BRASIL LTDA", "PAIVA E SOUZA COMERCIO DE CALC", "INDITEX BRASIL LTDA"];
+const emCreds  = [26737.42, 17722.52, 15691.83, 6652.37, 6602.15, 5337.18, 4456.4, 4449.36, 3693.42, 3268.34, 3241.22, 3089.89, 2901.95, 2835.24, 2479.72];
+
+new Chart(document.getElementById('chartEmitentes'), {
+  type: 'bar',
+  data: {
+    labels: emLabels,
+    datasets: [{
+      label: 'Créditos (R$)',
+      data: emCreds,
+      backgroundColor: 'rgba(240,160,32,0.75)',
+      borderColor: ORANGE, borderWidth: 0, borderRadius: 3,
+    }],
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: GRID },
+            ticks: { callback: v => 'R$' + (v/1000).toFixed(1) + 'K', color: '#666666', font: { size: 10 } } },
+      y: { grid: { display: false }, ticks: { color: '#1A1A1A', font: { size: 10 } } },
+    },
+  },
+});
+
+// ── Slide 7: Projeção 2026 ───────────────────────────────
+const projLabels  = ["Jan/2026", "Fev/2026", "Mar/2026", "Abr/2026", "Mai/2026", "Jun/2026", "Jul/2026", "Ago/2026", "Set/2026", "Out/2026", "Nov/2026", "Dez/2026"];
+const projReceita = [0.0, 0.0, 0.0, 0.0, 14726.0, 17538.0, 20350.0, 23162.0, 25974.0, 28786.0, 31598.0, 34410.0];
+
+new Chart(document.getElementById('chartProjecao'), {
+  type: 'line',
+  data: {
+    labels: projLabels,
+    datasets: [{
+      label: 'Receita Estimada (R$)',
+      data: projReceita,
+      borderColor: ORANGE,
+      backgroundColor: 'rgba(240,160,32,0.08)',
+      pointBackgroundColor: projLabels.map((l,i) =>
+        (l === 'Set/2026' || l === 'Dez/2026') ? '#F0A020' : 'rgba(240,160,32,0.5)'
+      ),
+      pointRadius: projLabels.map((l,i) =>
+        (l === 'Set/2026' || l === 'Dez/2026') ? 7 : 4
+      ),
+      tension: 0.4, fill: true,
+      borderWidth: 2,
+    }],
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: '#666666', font: { size: 11 } } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: '#666666', font: { size: 10 } } },
+      y: { grid: { color: GRID },
+            ticks: { callback: v => fmtBRL(v), color: '#666666', font: { size: 10 } } },
+    },
+  },
+});
+</script>
+</body>
+</html>
