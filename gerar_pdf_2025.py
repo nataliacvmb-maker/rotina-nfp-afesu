@@ -18,7 +18,9 @@ with sync_playwright() as p:
     page.goto(f"file://{HTML}")
     page.wait_for_timeout(3000)
     page.add_style_tag(content=CSS)
-    page.wait_for_timeout(500)
+    # Força Chart.js a redesenhar todos os gráficos após o layout mudar
+    page.evaluate("window.dispatchEvent(new Event('resize'))")
+    page.wait_for_timeout(3000)
     page.pdf(path=PDF, landscape=True, format="A4", print_background=True)
     browser.close()
 

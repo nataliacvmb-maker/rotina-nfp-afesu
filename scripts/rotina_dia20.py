@@ -71,7 +71,9 @@ def gerar_pdf(html_path: str, pdf_path: str) -> bool:
                 .slide { width: 100% !important; height: auto !important; min-height: 100vh !important; overflow: visible !important; page-break-after: always !important; break-after: page !important; }
                 #nav { display: none !important; }
             """)
-            page.wait_for_timeout(500)
+            # Força Chart.js a redesenhar todos os gráficos após o layout mudar
+            page.evaluate("window.dispatchEvent(new Event('resize'))")
+            page.wait_for_timeout(3000)
             page.pdf(path=pdf_path, landscape=True, format="A4", print_background=True)
             browser.close()
         print("  ✓ PDF gerado com playwright.")
