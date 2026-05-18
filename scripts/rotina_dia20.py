@@ -64,6 +64,14 @@ def gerar_pdf(html_path: str, pdf_path: str) -> bool:
             page = browser.new_page(viewport={"width": 1280, "height": 720})
             page.goto(f"file://{html_path}")
             page.wait_for_timeout(3000)  # aguarda Chart.js renderizar os gráficos
+            # Expande todos os slides para o PDF (o layout usa scroll horizontal)
+            page.add_style_tag(content="""
+                html, body { overflow: visible !important; height: auto !important; }
+                #slider { display: block !important; overflow: visible !important; width: auto !important; height: auto !important; }
+                .slide { width: 100% !important; height: auto !important; min-height: 100vh !important; overflow: visible !important; page-break-after: always !important; break-after: page !important; }
+                #nav { display: none !important; }
+            """)
+            page.wait_for_timeout(500)
             page.pdf(path=pdf_path, landscape=True, format="A4", print_background=True)
             browser.close()
         print("  ✓ PDF gerado com playwright.")
