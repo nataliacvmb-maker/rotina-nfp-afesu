@@ -23,6 +23,9 @@ RELATORIO_LOCAL  = "/Users/lucasbarros/rotina-nfp/relatorio_atual.html"
 RELATORIO_PASTA  = "1DaZee1KevxWcrC3hvwokpxgUKJQwla9s"
 HISTORICO_PASTA  = "1_LEXZPzLHoYlArvsZgpeQlI9abj1inoW"
 
+GITHUB_TOKEN_PATH = "/Users/lucasbarros/rotina-nfp/github_token.txt"
+GITHUB_REPO       = "nataliacvmb-maker/rotina-nfp-afesu"
+
 MESES_PT = {
     1:"Janeiro",2:"Fevereiro",3:"Março",4:"Abril",5:"Maio",6:"Junho",
     7:"Julho",8:"Agosto",9:"Setembro",10:"Outubro",11:"Novembro",12:"Dezembro",
@@ -108,6 +111,46 @@ def gerar_pdf(html_path: str, pdf_path: str) -> bool:
         return False
 
 
+def atualizar_github_pages(html_path: str) -> bool:
+    """Publica o relatório como index.html no GitHub Pages (branch main)."""
+    import base64, json, urllib.request, urllib.error
+    try:
+        with open(GITHUB_TOKEN_PATH) as f:
+            token = f.read().strip()
+    except FileNotFoundError:
+        print(f"  [AVISO] GitHub Pages: arquivo de token não encontrado em {GITHUB_TOKEN_PATH}")
+        return False
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github.v3+json",
+        "Content-Type": "application/json",
+    }
+    api = f"https://api.github.com/repos/{GITHUB_REPO}/contents/index.html"
+    try:
+        req = urllib.request.Request(f"{api}?ref=main", headers=headers)
+        with urllib.request.urlopen(req) as r:
+            sha = json.loads(r.read())["sha"]
+    except Exception as e:
+        print(f"  [AVISO] GitHub Pages: não foi possível obter SHA do index.html: {e}")
+        return False
+    with open(html_path, "rb") as f:
+        content_b64 = base64.b64encode(f.read()).decode()
+    payload = json.dumps({
+        "message": f"Relatório NFP {mes_ref:02d}/{ano_ref} — atualização automática",
+        "content": content_b64,
+        "sha": sha,
+        "branch": "main",
+    }).encode()
+    try:
+        req_put = urllib.request.Request(api, data=payload, headers=headers, method="PUT")
+        with urllib.request.urlopen(req_put) as r:
+            json.loads(r.read())
+        return True
+    except Exception as e:
+        print(f"  [AVISO] GitHub Pages: falha no upload: {e}")
+        return False
+
+
 def upload_to_drive(drive, local_path: str, nome: str, pasta_id: str, mime: str) -> str:
     """Faz upload de arquivo para o Drive, removendo versão anterior se existir."""
     existing = drive.files().list(
@@ -164,12 +207,21 @@ if pdf_ok and os.path.exists(pdf_local):
     upload_to_drive(drive, pdf_local, pdf_nome, HISTORICO_PASTA, "application/pdf")
     print(f"  ✓ PDF arquivado no Histórico NFP.")
 
-# ── 4. Enviar email ───────────────────────────────────────────────────
-print(f"\n[4/4] Enviando email de notificação para a equipe ...")
+# ── 4. Atualizar GitHub Pages ─────────────────────────────────────────
+print(f"\n[4/5] Atualizando GitHub Pages ...")
+pages_ok = atualizar_github_pages(RELATORIO_LOCAL)
+if pages_ok:
+    print("  ✓ GitHub Pages atualizado: https://nataliacvmb-maker.github.io/rotina-nfp-afesu/")
+else:
+    print("  [AVISO] GitHub Pages não atualizado — verifique o token.")
+
+# ── 5. Enviar email ───────────────────────────────────────────────────
+print(f"\n[5/5] Enviando email de notificação para a equipe ...")
 from emails import enviar_email_relatorio
 enviar_email_relatorio(mes_ref, ano_ref, drive_link)
 
 print("\n" + "=" * 60)
 print("  Rotina Dia 20 concluída com sucesso!")
-print(f"  Relatório: {drive_link}")
+print(f"  Relatório Drive : {drive_link}")
+print(f"  GitHub Pages    : https://nataliacvmb-maker.github.io/rotina-nfp-afesu/")
 print("=" * 60)
