@@ -35,7 +35,8 @@ MESES_PT = {
 
 CONSULTA_DRIVE_URL  = "https://drive.google.com/drive/folders/1v5SUZUJo7CaR3XHhsLd3pAx2fpGt2fYF"
 PEDIDO_DRIVE_URL    = "https://drive.google.com/drive/folders/1PBja7WtquTEIIaQntesCdDgnSbWOOkoI"
-RELATORIO_PASTA_URL = "https://drive.google.com/drive/folders/1DaZee1KevxWcrC3hvwokpxgUKJQwla9s"
+RELATORIO_PASTA_URL = "https://drive.google.com/drive/u/2/folders/1_LEXZPzLHoYlArvsZgpeQlI9abj1inoW"
+GITHUB_PAGES_URL    = "https://nataliacvmb-maker.github.io/rotina-nfp-afesu/"
 
 
 def _get_gmail_service():
@@ -123,8 +124,8 @@ def enviar_email_relatorio(mes_ref: int, ano_ref: int, drive_link: str):
     <p>O relatório <strong>{nome_arquivo}</strong> foi gerado e salvo no Drive.</p>
 
     <div style="text-align:center;margin:30px 0">
-      <a href="{drive_link}" style="background:#F0A020;color:#fff;padding:14px 32px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:15px">
-        Abrir Relatório no Drive
+      <a href="{GITHUB_PAGES_URL}" style="background:#F0A020;color:#fff;padding:14px 32px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:15px">
+        Abrir Relatório Online
       </a>
     </div>
 
