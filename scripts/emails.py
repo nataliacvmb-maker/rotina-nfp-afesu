@@ -3,6 +3,7 @@ Funções para envio de emails via Gmail API.
 """
 import base64
 import datetime
+import os
 from email.message import EmailMessage
 from email import policy as email_policy
 
@@ -10,8 +11,8 @@ from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 
-TOKEN_PATH       = "/Users/lucasbarros/rotina-nfp/token.json"
-CREDENTIALS_PATH = "/Users/lucasbarros/rotina-nfp/credentials.json"
+TOKEN_PATH       = os.environ.get("GOOGLE_TOKEN_PATH", "/Users/lucasbarros/rotina-nfp/token.json")
+CREDENTIALS_PATH = os.environ.get("GOOGLE_CREDENTIALS_PATH", "/Users/lucasbarros/rotina-nfp/credentials.json")
 
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.send",
