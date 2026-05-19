@@ -1,0 +1,50 @@
+name: Rotina NFP — Dia 20
+
+on:
+  schedule:
+    - cron: '0 12 20 * *'  # 09:00 BRT = 12:00 UTC
+  workflow_dispatch:        # permite rodar manualmente pela interface do GitHub
+
+permissions:
+  contents: write
+
+jobs:
+  rotina-dia20:
+    runs-on: ubuntu-latest
+
+    env:
+      GOOGLE_TOKEN_PATH: /tmp/nfp/token.json
+      RELATORIO_PATH:    /tmp/nfp/relatorio_atual.html
+      NFP_DIR:           /tmp/nfp
+
+    steps:
+      - name: Checkout repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependências Python
+        run: |
+          pip install \
+            google-auth \
+            google-auth-httplib2 \
+            google-api-python-client \
+            pandas \
+            playwright \
+            certifi
+
+      - name: Instalar Chromium (playwright)
+        run: python -m playwright install --with-deps chromium
+
+      - name: Restaurar credenciais Google
+        run: |
+          mkdir -p /tmp/nfp
+          echo '${{ secrets.GOOGLE_TOKEN_JSON }}' > /tmp/nfp/token.json
+
+      - name: Rodar rotina dia 20
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/rotina_dia20.py

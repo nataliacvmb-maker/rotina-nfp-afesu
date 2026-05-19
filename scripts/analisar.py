@@ -14,6 +14,7 @@ CORREÇÕES (Mai/2026):
 
 import io
 import json
+import os
 import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Tuple
@@ -31,9 +32,9 @@ CONSULTA_2026_FOLDER_ID = "1v5SUZUJo7CaR3XHhsLd3pAx2fpGt2fYF"
 PEDIDO_2025_FOLDER_ID = "1PBja7WtquTEIIaQntesCdDgnSbWOOkoI"
 PEDIDO_2026_FOLDER_ID = "1PBja7WtquTEIIaQntesCdDgnSbWOOkoI"  # atualizar quando pasta 2026 for separada
 
-CREDENTIALS_PATH = "/Users/lucasbarros/rotina-nfp/credentials.json"
-TOKEN_PATH       = "/Users/lucasbarros/rotina-nfp/token.json"
-OUTPUT_PATH      = "/Users/lucasbarros/rotina-nfp/relatorio_atual.html"
+CREDENTIALS_PATH = os.environ.get("GOOGLE_CREDENTIALS_PATH", "/Users/lucasbarros/rotina-nfp/credentials.json")
+TOKEN_PATH       = os.environ.get("GOOGLE_TOKEN_PATH",       "/Users/lucasbarros/rotina-nfp/token.json")
+OUTPUT_PATH      = os.environ.get("RELATORIO_PATH",          "/Users/lucasbarros/rotina-nfp/relatorio_atual.html")
 
 SCOPES = [
     "https://www.googleapis.com/auth/drive",

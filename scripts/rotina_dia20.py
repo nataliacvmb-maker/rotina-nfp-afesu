@@ -18,12 +18,13 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 
-TOKEN_PATH       = "/Users/lucasbarros/rotina-nfp/token.json"
-RELATORIO_LOCAL  = "/Users/lucasbarros/rotina-nfp/relatorio_atual.html"
+_NFP_DIR         = os.environ.get("NFP_DIR", "/Users/lucasbarros/rotina-nfp")
+TOKEN_PATH       = os.environ.get("GOOGLE_TOKEN_PATH", os.path.join(_NFP_DIR, "token.json"))
+RELATORIO_LOCAL  = os.environ.get("RELATORIO_PATH",    os.path.join(_NFP_DIR, "relatorio_atual.html"))
 RELATORIO_PASTA  = "1DaZee1KevxWcrC3hvwokpxgUKJQwla9s"
 HISTORICO_PASTA  = "1_LEXZPzLHoYlArvsZgpeQlI9abj1inoW"
 
-GITHUB_TOKEN_PATH = "/Users/lucasbarros/rotina-nfp/github_token.txt"
+GITHUB_TOKEN_PATH = os.environ.get("GITHUB_TOKEN_FILE", os.path.join(_NFP_DIR, "github_token.txt"))
 GITHUB_REPO       = "nataliacvmb-maker/rotina-nfp-afesu"
 
 MESES_PT = {
@@ -41,7 +42,7 @@ else:
     ano_ref = hoje.year
 
 nome_arquivo = f"{mes_ref:02d}.{ano_ref}_Estudo NFP - AFESU"
-pdf_local    = f"/Users/lucasbarros/rotina-nfp/{nome_arquivo}.pdf"
+pdf_local    = os.path.join(_NFP_DIR, f"{nome_arquivo}.pdf")
 
 
 def _get_creds():
@@ -113,13 +114,25 @@ def gerar_pdf(html_path: str, pdf_path: str) -> bool:
 
 def atualizar_github_pages(html_path: str) -> bool:
     """Publica o relatório como index.html no GitHub Pages (branch main)."""
-    import base64, json, urllib.request, urllib.error
+    import base64, json, ssl, urllib.request, urllib.error
+
+    # GitHub Actions fornece GITHUB_TOKEN automaticamente; fallback para arquivo local
+    token = os.environ.get("GITHUB_TOKEN")
+    if not token:
+        try:
+            with open(GITHUB_TOKEN_PATH) as f:
+                token = f.read().strip()
+        except FileNotFoundError:
+            print(f"  [AVISO] GitHub Pages: token não encontrado em {GITHUB_TOKEN_PATH}")
+            return False
+
+    # SSL context com certifi se disponível (corrige erro no macOS)
     try:
-        with open(GITHUB_TOKEN_PATH) as f:
-            token = f.read().strip()
-    except FileNotFoundError:
-        print(f"  [AVISO] GitHub Pages: arquivo de token não encontrado em {GITHUB_TOKEN_PATH}")
-        return False
+        import certifi
+        ssl_ctx = ssl.create_default_context(cafile=certifi.where())
+    except ImportError:
+        ssl_ctx = ssl.create_default_context()
+
     headers = {
         "Authorization": f"token {token}",
         "Accept": "application/vnd.github.v3+json",
@@ -128,7 +141,7 @@ def atualizar_github_pages(html_path: str) -> bool:
     api = f"https://api.github.com/repos/{GITHUB_REPO}/contents/index.html"
     try:
         req = urllib.request.Request(f"{api}?ref=main", headers=headers)
-        with urllib.request.urlopen(req) as r:
+        with urllib.request.urlopen(req, context=ssl_ctx) as r:
             sha = json.loads(r.read())["sha"]
     except Exception as e:
         print(f"  [AVISO] GitHub Pages: não foi possível obter SHA do index.html: {e}")
@@ -143,7 +156,7 @@ def atualizar_github_pages(html_path: str) -> bool:
     }).encode()
     try:
         req_put = urllib.request.Request(api, data=payload, headers=headers, method="PUT")
-        with urllib.request.urlopen(req_put) as r:
+        with urllib.request.urlopen(req_put, context=ssl_ctx) as r:
             json.loads(r.read())
         return True
     except Exception as e:
@@ -179,8 +192,9 @@ print("=" * 60)
 
 # ── 1. Rodar análise ──────────────────────────────────────────────────
 print("\n[1/4] Rodando análise e gerando relatório HTML ...")
+_analisar_py = os.path.join(os.path.dirname(os.path.abspath(__file__)), "analisar.py")
 result = subprocess.run(
-    [sys.executable, "/Users/lucasbarros/rotina-nfp/analisar.py"],
+    [sys.executable, _analisar_py],
     capture_output=True, text=True
 )
 if result.returncode != 0:
