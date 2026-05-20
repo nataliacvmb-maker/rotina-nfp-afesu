@@ -126,6 +126,8 @@ def notificar_revisao(
     feedback: str,
     de_email: str,
     versao: int = 1,
+    criacao_email_2: str = "",
+    criacao_nome_2: str = "",
 ):
     """
     Encaminha feedback de revisão para os times de copy e criação.
@@ -134,13 +136,17 @@ def notificar_revisao(
     service = _gmail_service()
     assunto = f"[REVISÃO NECESSÁRIA] Email {cliente_nome} — {mes}"
 
+    destinatarios_criacao = [(criacao_email, criacao_nome)]
+    if criacao_email_2:
+        destinatarios_criacao.append((criacao_email_2, criacao_nome_2))
+
     for para_email, para_nome, instrucao in [
         (copy_email, copy_nome,
          f"revise o arquivo copy/roteiro.yaml na pasta do cliente no Drive:\n"
          f"  {cliente_nome} > Disparos Emails > {mes} > copy > roteiro.yaml"),
-        (criacao_email, criacao_nome,
-         f"atualize o banner na pasta do cliente no Drive:\n"
-         f"  {cliente_nome} > Disparos Emails > {mes} > banner > [arquivo]"),
+        *[(e, n, f"atualize o banner na pasta do cliente no Drive:\n"
+           f"  {cliente_nome} > Disparos Emails > {mes} > banner > [arquivo]")
+          for e, n in destinatarios_criacao],
     ]:
         if not para_email:
             continue

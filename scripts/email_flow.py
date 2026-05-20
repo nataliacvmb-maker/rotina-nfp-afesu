@@ -53,6 +53,8 @@ def processar_cliente(cliente: dict, config: dict):
     operador_nome = cliente.get("operador_nome", "")
     approver_email = cliente.get("approver_email", "")
     approver_nome = cliente.get("approver_name", "")
+    criacao_email_2 = cliente.get("criacao_email_2", "")
+    criacao_nome_2 = cliente.get("criacao_nome_2", "")
     de_email = config.get("notification_from_email", "")
 
     if not drive_id or not list_id or not operador_email:
