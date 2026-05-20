@@ -14,6 +14,7 @@ O que o operador faz manualmente no RD Station:
 """
 
 import os
+import traceback
 import yaml
 from datetime import datetime, timezone
 from pathlib import Path
@@ -203,6 +204,7 @@ def main():
             processar_cliente(cliente, config)
         except Exception as e:
             print(f"[{cliente['name']}] ERRO: {e}")
+            traceback.print_exc()
     print("Processamento concluído")
 
 

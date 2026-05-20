@@ -23,8 +23,11 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Restaurar credenciais Google
+        env:
+          GOOGLE_TOKEN_JSON: ${{ secrets.GOOGLE_TOKEN_JSON }}
         run: |
-          echo '${{ secrets.GOOGLE_TOKEN_JSON }}' > /tmp/google_token.json
+          printf '%s' "$GOOGLE_TOKEN_JSON" > /tmp/google_token.json
+          python3 -c "import json; json.load(open('/tmp/google_token.json')); print('Token JSON válido')"
 
       - name: Verificar insumos e notificar operadores
         env:
