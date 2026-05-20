@@ -2,7 +2,6 @@ name: Rotina Email Marketing RD Station
 
 on:
   schedule:
-    # Roda a cada 4 horas em dias uteis (8h, 12h, 16h, 20h BRT)
     - cron: "0 11,15,19,23 * * 1-5"
   workflow_dispatch:
 
@@ -24,10 +23,11 @@ jobs:
 
       - name: Restaurar credenciais Google
         env:
-          GOOGLE_TOKEN_JSON: ${{ secrets.GOOGLE_TOKEN_JSON }}
-        run: |
-          printf '%s' "$GOOGLE_TOKEN_JSON" > /tmp/google_token.json
-          python3 -c "import json; json.load(open('/tmp/google_token.json')); print('Token JSON válido')"
+          GOOGLE_TOKEN_PATH: /tmp/google_token.json
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+        run: python3 scripts/make_token.py
 
       - name: Verificar insumos e notificar operadores
         env:
@@ -35,7 +35,7 @@ jobs:
           RDSTATION_PRIVATE_TOKEN: ${{ secrets.RDSTATION_PRIVATE_TOKEN }}
         run: |
           cd scripts
-          python email_flow.py
+          python3 email_flow.py
 
       - name: Coletar metricas de campanhas enviadas
         env:
@@ -43,4 +43,4 @@ jobs:
           RDSTATION_PRIVATE_TOKEN: ${{ secrets.RDSTATION_PRIVATE_TOKEN }}
         run: |
           cd scripts
-          python performance.py
+          python3 performance.py
