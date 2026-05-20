@@ -2,13 +2,13 @@
 Orquestrador do fluxo semi-automatizado de email marketing.
 
 O que o sistema faz automaticamente:
-  1. Detecta quando base + banner + roteiro estão prontos no Drive
-  2. Importa os contatos na lista do cliente no RD Station
+  1. Detecta todos os disparos prontos no Drive (Disparo-1, Disparo-2, etc.)
+  2. Importa os contatos no RD Station com a tag do cliente
   3. Gera o HTML completo do email (banner + copy + botão CTA)
   4. Envia email ao operador com checklist + HTML em anexo
 
 O que o operador faz manualmente no RD Station:
-  - Colar o HTML na campanha
+  - Criar a campanha e colar o HTML
   - Enviar email teste para o aprovador
   - Após aprovação, disparar para a lista
 """
@@ -41,10 +41,6 @@ def _mes_atual() -> str:
     return f"{meses[hoje.month]}-{hoje.year}"
 
 
-def _campanha_do_mes(estado: dict, mes: str) -> dict | None:
-    return next((c for c in estado.get("campanhas", []) if c["mes"] == mes), None)
-
-
 def processar_cliente(cliente: dict, config: dict):
     nome = cliente["name"]
     drive_id = cliente.get("drive_folder_id", "")
@@ -58,75 +54,85 @@ def processar_cliente(cliente: dict, config: dict):
     de_email = config.get("notification_from_email", "")
 
     if not drive_id or not list_id or not operador_email:
-        print(f"[{nome}] ⚠ Configuração incompleta (drive_folder_id, rdstation_list_id ou operador_email) — pulando")
+        print(f"[{nome}] ⚠ Configuração incompleta — pulando")
         return
 
     mes = _mes_atual()
     estado = ler_estado(drive_id)
-    campanha = _campanha_do_mes(estado, mes)
 
-    if campanha and campanha.get("status") == "notificado":
-        print(f"[{nome}] ✓ Operador já notificado para {mes}")
+    disparos = verificar_insumos(drive_id)
+    if not disparos:
+        print(f"[{nome}] ⏳ Aguardando insumos no Drive")
         return
 
-    insumos = verificar_insumos(drive_id)
-    if not insumos:
-        print(f"[{nome}] ⏳ Aguardando insumos no Drive (base, banner ou copy/roteiro.yaml)")
-        return
+    for disparo in disparos:
+        campanha_id = disparo["campanha_id"]
+        disparo_nome = disparo["disparo_nome"]
 
-    print(f"[{nome}] ✓ Insumos prontos: {insumos['base_nome']} | {insumos['banner_nome']} | {insumos['roteiro_nome']}")
+        campanha_existente = next(
+            (c for c in estado.get("campanhas", []) if c.get("campanha_id") == campanha_id),
+            None
+        )
+        if campanha_existente and campanha_existente.get("status") == "notificado":
+            print(f"[{nome}] ✓ {disparo_nome}: operador já notificado")
+            continue
 
-    rd = RDStationAPI()
-    contatos = baixar_base_emails(insumos["base_id"])
-    print(f"[{nome}] Importando {len(contatos)} contatos na lista '{nome}'...")
-    try:
-        rd.importar_contatos(contatos, list_id)
-        print(f"[{nome}] ✓ {len(contatos)} contatos importados")
-        importacao_ok = True
-    except Exception as e:
-        print(f"[{nome}] ⚠ Erro na importação: {e} — continuando mesmo assim")
-        importacao_ok = False
+        print(f"[{nome}] {disparo_nome} ✓ Insumos prontos: {disparo['base_nome']} | {disparo['banner_nome']} | {disparo['roteiro_nome']}")
 
-    banner_path = baixar_banner(insumos["banner_id"])
-    roteiro = baixar_roteiro(insumos["roteiro_id"])
+        rd = RDStationAPI()
+        contatos = baixar_base_emails(disparo["base_id"])
+        print(f"[{nome}] {disparo_nome}: importando {len(contatos)} contatos...")
+        try:
+            rd.importar_contatos(contatos, list_id)
+            print(f"[{nome}] {disparo_nome}: ✓ {len(contatos)} contatos importados")
+            importacao_ok = True
+        except Exception as e:
+            print(f"[{nome}] {disparo_nome}: ⚠ Erro na importação: {e} — continuando")
+            importacao_ok = False
 
-    if not roteiro.get("assunto"):
-        print(f"[{nome}] ⚠ roteiro.yaml sem campo 'assunto' — abortando")
-        return
-    if not roteiro.get("cta_url"):
-        print(f"[{nome}] ⚠ roteiro.yaml sem campo 'cta_url' — abortando")
-        return
+        banner_path = baixar_banner(disparo["banner_id"])
+        roteiro = baixar_roteiro(disparo["roteiro_id"])
 
-    html = _montar_html(nome, mes, banner_path, roteiro)
-    html_path = f"/tmp/{cliente['slug']}_{mes}.html"
-    with open(html_path, "w", encoding="utf-8") as f:
-        f.write(html)
+        if not roteiro.get("assunto"):
+            print(f"[{nome}] {disparo_nome}: ⚠ roteiro.yaml sem 'assunto' — abortando")
+            continue
+        if not roteiro.get("cta_url"):
+            print(f"[{nome}] {disparo_nome}: ⚠ roteiro.yaml sem 'cta_url' — abortando")
+            continue
 
-    notificar_operador(
-        operador_email=operador_email,
-        operador_nome=operador_nome,
-        cliente_nome=nome,
-        mes=mes,
-        total_contatos=len(contatos),
-        roteiro=roteiro,
-        html_path=html_path,
-        approver_email=approver_email,
-        approver_nome=approver_nome,
-        de_email=de_email,
-    )
+        html = _montar_html(nome, mes, banner_path, roteiro)
+        html_path = f"/tmp/{cliente['slug']}_{disparo_nome}_{mes}.html"
+        with open(html_path, "w", encoding="utf-8") as f:
+            f.write(html)
 
-    dados_campanha = {
-        "mes": mes,
-        "status": "notificado",
-        "total_contatos": len(contatos),
-        "importacao_ok": importacao_ok,
-        "notificado_em": datetime.now(timezone.utc).isoformat(),
-        "assunto": roteiro.get("assunto", ""),
-        "metricas": None,
-    }
-    estado.setdefault("campanhas", []).append(dados_campanha)
-    salvar_estado(drive_id, estado)
-    print(f"[{nome}] ✓ Operador notificado — campanha pronta para criar no RD Station")
+        notificar_operador(
+            operador_email=operador_email,
+            operador_nome=operador_nome,
+            cliente_nome=nome,
+            mes=mes,
+            disparo_nome=disparo_nome,
+            total_contatos=len(contatos),
+            roteiro=roteiro,
+            html_path=html_path,
+            approver_email=approver_email,
+            approver_nome=approver_nome,
+            de_email=de_email,
+        )
+
+        dados_campanha = {
+            "campanha_id": campanha_id,
+            "mes": mes,
+            "disparo": disparo_nome,
+            "status": "notificado",
+            "total_contatos": len(contatos),
+            "importacao_ok": importacao_ok,
+            "notificado_em": datetime.now(timezone.utc).isoformat(),
+            "assunto": roteiro.get("assunto", ""),
+            "metricas": None,
+        }
+        estado.setdefault("campanhas", []).append(dados_campanha)
+        salvar_estado(drive_id, estado)
+        print(f"[{nome}] {disparo_nome}: ✓ Operador notificado")
 
 
 def _montar_html(cliente_nome: str, mes: str, banner_path: str, roteiro: dict) -> str:
@@ -167,12 +173,8 @@ def _montar_html(cliente_nome: str, mes: str, banner_path: str, roteiro: dict) -
     .corpo{{padding:20px 24px;color:#444;font-size:15px;line-height:1.7}}
     .corpo p{{margin:0 0 12px}}
     .cta{{padding:20px 24px 28px;text-align:center}}
-    .btn-cta{{
-      display:inline-block;padding:14px 36px;
-      background:#e05c00;color:#fff;
-      text-decoration:none;border-radius:4px;
-      font-size:16px;font-weight:bold;letter-spacing:.3px
-    }}
+    .btn-cta{{display:inline-block;padding:14px 36px;background:#e05c00;color:#fff;
+      text-decoration:none;border-radius:4px;font-size:16px;font-weight:bold;letter-spacing:.3px}}
     .footer{{padding:20px 24px;text-align:center;font-size:12px;color:#999;border-top:1px solid #eee}}
     .footer a{{color:#999}}
   </style>

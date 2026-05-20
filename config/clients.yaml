@@ -87,12 +87,12 @@ clients:
     slug: "afesu"
     drive_folder_id: "1-PIXOctsovNvhsqXfS7b4zvSGe6l1uOK"
     rdstation_list_id: "Afesu"
-    operador_email: "barbara.aquino@timecaptacao.com.br"
-    operador_nome: "Barbara"
-    approver_email: "barbara.aquino@timecaptacao.com.br"
-    approver_name: "Barbara"
-    copy_email: "barbara.aquino@timecaptacao.com.br"
-    copy_nome: "Barbara"
+    operador_email: "natalia.valverde@timecaptacao.com.br"  # TESTE — trocar para barbara após validação
+    operador_nome: "Natalia"
+    approver_email: "natalia.valverde@timecaptacao.com.br"  # TESTE — trocar para barbara após validação
+    approver_name: "Natalia"
+    copy_email: "natalia.valverde@timecaptacao.com.br"  # TESTE — trocar para barbara após validação
+    copy_nome: "Natalia"
     criacao_email: "vinicius.torres@timecaptacao.com.br"
     criacao_nome: "Vinicius"
     criacao_email_2: "joao.cunha@timecaptacao.com.br"

@@ -1,14 +1,17 @@
 """
 Utilitários para interação com o Google Drive.
 
-Estrutura esperada por cliente:
+Estrutura de pastas por cliente:
   [drive_folder_id]/
     Disparos Emails/
       [Mês-Ano]/
-        base/      ← planilha .xlsx ou .csv com emails
-        banner/    ← imagem do banner (.jpg, .jpeg, .png)
-        copy/
-          roteiro.yaml
+        Disparo-1/
+          base/    ← planilha .xlsx ou .csv com emails
+          banner/  ← imagem do banner (.jpg, .jpeg, .png)
+          copy/
+            roteiro.yaml
+        Disparo-2/
+          base/ banner/ copy/   ← segundo email do mês
 
 Arquivo de estado: estado_disparos.json na raiz da pasta do cliente.
 """
@@ -25,9 +28,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
 
 
-SCOPES = [
-    "https://www.googleapis.com/auth/drive",
-]
+SCOPES = ["https://www.googleapis.com/auth/drive"]
 
 _drive_service = None
 
@@ -59,8 +60,7 @@ def _listar_filhos(folder_id: str, nome_filtro: str | None = None) -> list[dict]
 
 
 def _encontrar_subpasta(folder_id: str, nome: str) -> str | None:
-    filhos = _listar_filhos(folder_id, nome)
-    for f in filhos:
+    for f in _listar_filhos(folder_id, nome):
         if f["mimeType"] == "application/vnd.google-apps.folder":
             return f["id"]
     return None
@@ -76,50 +76,71 @@ def _mes_atual() -> str:
     return f"{meses[hoje.month]}-{hoje.year}"
 
 
-def verificar_insumos(drive_folder_id: str) -> dict | None:
+def verificar_insumos(drive_folder_id: str) -> list[dict]:
     """
-    Verifica se base + banner + roteiro.yaml estão presentes no Drive
-    para o mês atual. Retorna dict com IDs e nomes, ou None se incompleto.
+    Retorna lista de disparos prontos para o mês atual.
+    Cada item: {disparo_nome, campanha_id, base_id, base_nome,
+                banner_id, banner_nome, roteiro_id, roteiro_nome,
+                pasta_base_link, pasta_banner_link, pasta_copy_link}
     """
     mes = _mes_atual()
 
-    disparos = _encontrar_subpasta(drive_folder_id, "Disparos Emails")
-    if not disparos:
-        return None
+    pasta_disparos = _encontrar_subpasta(drive_folder_id, "Disparos Emails")
+    if not pasta_disparos:
+        return []
 
-    pasta_mes = _encontrar_subpasta(disparos, mes)
+    pasta_mes = _encontrar_subpasta(pasta_disparos, mes)
     if not pasta_mes:
-        return None
+        return []
 
-    pasta_base = _encontrar_subpasta(pasta_mes, "base")
-    pasta_banner = _encontrar_subpasta(pasta_mes, "banner")
-    pasta_copy = _encontrar_subpasta(pasta_mes, "copy")
-
-    if not pasta_base or not pasta_banner or not pasta_copy:
-        return None
-
-    arquivos_base = [
-        f for f in _listar_filhos(pasta_base)
-        if any(f["name"].lower().endswith(ext) for ext in (".xlsx", ".xls", ".csv"))
+    subpastas = [
+        f for f in _listar_filhos(pasta_mes)
+        if f["mimeType"] == "application/vnd.google-apps.folder"
     ]
-    arquivos_banner = [
-        f for f in _listar_filhos(pasta_banner)
-        if any(f["name"].lower().endswith(ext) for ext in (".jpg", ".jpeg", ".png"))
-    ]
-    arquivos_roteiro = [f for f in _listar_filhos(pasta_copy) if f["name"] == "roteiro.yaml"]
 
-    if not arquivos_base or not arquivos_banner or not arquivos_roteiro:
-        return None
+    prontos = []
+    for subpasta in sorted(subpastas, key=lambda x: x["name"]):
+        disparo_id = subpasta["id"]
+        disparo_nome = subpasta["name"]
 
-    return {
-        "base_id": arquivos_base[0]["id"],
-        "base_nome": arquivos_base[0]["name"],
-        "base_modificado": arquivos_base[0]["modifiedTime"],
-        "banner_id": arquivos_banner[0]["id"],
-        "banner_nome": arquivos_banner[0]["name"],
-        "roteiro_id": arquivos_roteiro[0]["id"],
-        "roteiro_nome": arquivos_roteiro[0]["name"],
-    }
+        pasta_base = _encontrar_subpasta(disparo_id, "base")
+        pasta_banner = _encontrar_subpasta(disparo_id, "banner")
+        pasta_copy = _encontrar_subpasta(disparo_id, "copy")
+
+        if not pasta_base or not pasta_banner or not pasta_copy:
+            continue
+
+        arquivos_base = [
+            f for f in _listar_filhos(pasta_base)
+            if any(f["name"].lower().endswith(ext) for ext in (".xlsx", ".xls", ".csv"))
+        ]
+        arquivos_banner = [
+            f for f in _listar_filhos(pasta_banner)
+            if any(f["name"].lower().endswith(ext) for ext in (".jpg", ".jpeg", ".png"))
+        ]
+        arquivos_roteiro = [
+            f for f in _listar_filhos(pasta_copy)
+            if f["name"] == "roteiro.yaml"
+        ]
+
+        if not arquivos_base or not arquivos_banner or not arquivos_roteiro:
+            continue
+
+        prontos.append({
+            "disparo_nome": disparo_nome,
+            "campanha_id": f"{mes}/{disparo_nome}",
+            "base_id": arquivos_base[0]["id"],
+            "base_nome": arquivos_base[0]["name"],
+            "banner_id": arquivos_banner[0]["id"],
+            "banner_nome": arquivos_banner[0]["name"],
+            "roteiro_id": arquivos_roteiro[0]["id"],
+            "roteiro_nome": arquivos_roteiro[0]["name"],
+            "pasta_base_link": f"https://drive.google.com/drive/folders/{pasta_base}",
+            "pasta_banner_link": f"https://drive.google.com/drive/folders/{pasta_banner}",
+            "pasta_copy_link": f"https://drive.google.com/drive/folders/{pasta_copy}",
+        })
+
+    return prontos
 
 
 def _baixar_arquivo(file_id: str) -> bytes:
@@ -133,7 +154,6 @@ def _baixar_arquivo(file_id: str) -> bytes:
 
 
 def baixar_base_emails(file_id: str) -> list[dict]:
-    """Baixa planilha de emails e retorna lista de {email, name}."""
     meta = _service().files().get(fileId=file_id, fields="name").execute()
     nome = meta["name"].lower()
     conteudo = _baixar_arquivo(file_id)
@@ -144,12 +164,11 @@ def baixar_base_emails(file_id: str) -> list[dict]:
         df = pd.read_excel(io.BytesIO(conteudo))
 
     df.columns = [c.strip().lower() for c in df.columns]
-
     col_email = next((c for c in df.columns if "email" in c), None)
     col_nome = next((c for c in df.columns if c in ("nome", "name", "contato")), None)
 
     if not col_email:
-        raise ValueError(f"Planilha sem coluna de email. Colunas encontradas: {list(df.columns)}")
+        raise ValueError(f"Planilha sem coluna de email. Colunas: {list(df.columns)}")
 
     contatos = []
     for _, row in df.iterrows():
@@ -157,12 +176,10 @@ def baixar_base_emails(file_id: str) -> list[dict]:
         nome_contato = str(row[col_nome]).strip() if col_nome and pd.notna(row[col_nome]) else ""
         if "@" in email:
             contatos.append({"email": email, "name": nome_contato})
-
     return contatos
 
 
 def baixar_banner(file_id: str) -> str:
-    """Baixa imagem do banner para /tmp e retorna o caminho."""
     meta = _service().files().get(fileId=file_id, fields="name").execute()
     ext = meta["name"].rsplit(".", 1)[-1].lower()
     path = f"/tmp/banner.{ext}"
@@ -172,13 +189,11 @@ def baixar_banner(file_id: str) -> str:
 
 
 def baixar_roteiro(file_id: str) -> dict:
-    """Baixa roteiro.yaml e retorna como dict."""
     conteudo = _baixar_arquivo(file_id)
     return yaml.safe_load(conteudo.decode("utf-8")) or {}
 
 
 def ler_estado(drive_folder_id: str) -> dict:
-    """Lê estado_disparos.json da pasta raiz do cliente no Drive."""
     arquivos = _listar_filhos(drive_folder_id, "estado_disparos.json")
     if not arquivos:
         return {}
@@ -187,13 +202,10 @@ def ler_estado(drive_folder_id: str) -> dict:
 
 
 def salvar_estado(drive_folder_id: str, estado: dict):
-    """Salva/atualiza estado_disparos.json na pasta raiz do cliente."""
     conteudo = json.dumps(estado, ensure_ascii=False, indent=2).encode("utf-8")
     buf = io.BytesIO(conteudo)
-
     arquivos = _listar_filhos(drive_folder_id, "estado_disparos.json")
     media = MediaIoBaseUpload(buf, mimetype="application/json")
-
     if arquivos:
         _service().files().update(fileId=arquivos[0]["id"], media_body=media).execute()
     else:
