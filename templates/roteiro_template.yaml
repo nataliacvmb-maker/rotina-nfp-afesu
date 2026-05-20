@@ -1,0 +1,28 @@
+# Template de roteiro para campanhas de email marketing
+# Salvar como: roteiro.yaml dentro da pasta copy/ do mês no Drive
+#
+# Campos obrigatórios: assunto, cta_url
+# Campos opcionais:    preheader, titulo, corpo, cta_texto
+
+# Linha de assunto do email (aparece na caixa de entrada)
+assunto: "Título do email que aparece na caixa de entrada"
+
+# Texto de pré-visualização (aparece após o assunto em alguns clientes de email)
+preheader: "Texto curto que aparece após o assunto no preview"
+
+# Título interno do email (aparece acima do banner)
+titulo: "Título em destaque dentro do email (opcional)"
+
+# Corpo do email — use linhas em branco para separar parágrafos
+corpo: |
+  Parágrafo de abertura com a mensagem principal.
+
+  Segundo parágrafo com detalhes ou apelo emocional.
+
+  Terceiro parágrafo com chamada para ação.
+
+# URL do botão de doação / CTA (obrigatório)
+cta_url: "https://..."
+
+# Texto do botão (padrão: "Doe agora")
+cta_texto: "Doe agora"

@@ -1,0 +1,43 @@
+name: Rotina Email Marketing RD Station
+
+on:
+  schedule:
+    # Roda a cada 4 horas em dias uteis (8h, 12h, 16h, 20h BRT)
+    - cron: "0 11,15,19,23 * * 1-5"
+  workflow_dispatch:
+
+jobs:
+  email-marketing:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Restaurar credenciais Google
+        run: |
+          echo '${{ secrets.GOOGLE_TOKEN_JSON }}' > /tmp/google_token.json
+
+      - name: Verificar insumos e notificar operadores
+        env:
+          GOOGLE_TOKEN_PATH: /tmp/google_token.json
+          RDSTATION_PRIVATE_TOKEN: ${{ secrets.RDSTATION_PRIVATE_TOKEN }}
+        run: |
+          cd scripts
+          python email_flow.py
+
+      - name: Coletar metricas de campanhas enviadas
+        env:
+          GOOGLE_TOKEN_PATH: /tmp/google_token.json
+          RDSTATION_PRIVATE_TOKEN: ${{ secrets.RDSTATION_PRIVATE_TOKEN }}
+        run: |
+          cd scripts
+          python performance.py
