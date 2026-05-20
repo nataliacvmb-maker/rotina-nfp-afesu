@@ -1,9 +1,11 @@
 """
-Utilitário para listar as segmentações (listas) do RD Station e obter os IDs.
-Rodar uma vez localmente para preencher o rdstation_list_id no clients.yaml.
+Utilitário para listar as tags do RD Station.
+
+Na API legada v1.3, as "listas" são tags. Este script mostra todas as tags
+existentes na conta para preencher o rdstation_tag no clients.yaml.
 
 Uso:
-  RDSTATION_PRIVATE_TOKEN=seu_token_privado python listar_segmentacoes.py
+  RDSTATION_PRIVATE_TOKEN=seu_token python3 listar_segmentacoes.py
 """
 
 import os
@@ -12,25 +14,25 @@ from rdstation_api import RDStationAPI
 
 def main():
     rd = RDStationAPI()
-    resultado = rd.listar_segmentacoes()
+    tags = rd.listar_tags()
 
-    segmentacoes = resultado.get("segmentations", resultado.get("data", [resultado] if isinstance(resultado, dict) else resultado))
+    print("\nTags disponíveis no RD Station:\n")
 
-    print("\nSegmentações disponíveis no RD Station:\n")
-    print(f"{'ID':<40} {'Nome'}")
-    print("─" * 70)
-
-    if isinstance(segmentacoes, list):
-        for seg in segmentacoes:
-            seg_id = seg.get("id", seg.get("uuid", "—"))
-            seg_nome = seg.get("name", seg.get("title", "—"))
-            print(f"{str(seg_id):<40} {seg_nome}")
-    else:
-        print("Resposta inesperada da API:")
+    if isinstance(tags, list) and tags:
+        for tag in tags:
+            if isinstance(tag, dict):
+                print(f"  - {tag.get('name', tag)}")
+            else:
+                print(f"  - {tag}")
+    elif isinstance(tags, dict):
         import json
-        print(json.dumps(resultado, indent=2, ensure_ascii=False))
+        print(json.dumps(tags, indent=2, ensure_ascii=False))
+    else:
+        print("  (nenhuma tag encontrada)")
 
-    print("\nCopie o ID correspondente a cada cliente no config/clients.yaml")
+    print("\nDica: use o nome da tag no campo rdstation_tag do clients.yaml")
+    print("Se não tiver tags ainda, defina um nome por cliente (ex: 'Afesu', 'Amparo')")
+    print("O sistema criará a tag automaticamente na primeira importação.\n")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,8 @@
 """
 Cliente para a API do RD Station Marketing (token privado — API legada v1.3).
+
+Na API v1.3, contatos são importados via /conversions com tags.
+As "listas" do RD Station são representadas por tags no plano atual.
 """
 
 import os
@@ -12,16 +15,12 @@ class RDStationAPI:
     def __init__(self):
         self.token = os.environ["RDSTATION_PRIVATE_TOKEN"]
 
-    def _params(self, extra: dict | None = None) -> dict:
-        p = {"auth_token": self.token}
-        if extra:
-            p.update(extra)
-        return p
+    def _params(self) -> dict:
+        return {"auth_token": self.token}
 
-    def importar_contatos(self, contatos: list[dict], list_id: str) -> dict:
+    def importar_contatos(self, contatos: list[dict], tag: str) -> dict:
         """
-        Importa contatos via conversions (upsert individual).
-        A API legada não tem endpoint de importação em lote — fazemos um por vez.
+        Importa contatos via conversions, adicionando a tag da lista/cliente.
         """
         resultados = {"sucesso": 0, "erro": 0}
         for c in contatos:
@@ -33,7 +32,7 @@ class RDStationAPI:
                 "payload": {
                     "email": c["email"],
                     "name": c.get("name", ""),
-                    "tags": [list_id],
+                    "tags": [tag],
                 },
             }
             try:
@@ -49,10 +48,10 @@ class RDStationAPI:
                 resultados["erro"] += 1
         return resultados
 
-    def listar_segmentacoes(self) -> dict:
-        """Retorna todas as segmentações/listas da conta."""
+    def listar_tags(self) -> list:
+        """Retorna todas as tags da conta."""
         resp = requests.get(
-            f"{self.BASE_URL}/segmentations",
+            f"{self.BASE_URL}/tags",
             params=self._params(),
             timeout=30,
         )
