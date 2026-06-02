@@ -89,6 +89,7 @@ clients:
     slug: "afesu"
     drive_folder_id: "1-PIXOctsovNvhsqXfS7b4zvSGe6l1uOK"
     rdstation_list_id: "Afesu"
+    spreadsheet_id: "1icbio-EAFvZggaQEuVvth_GCAINGLyD5WpNuGSRGaXo"
     operador_email: "natalia.valverde@timecaptacao.com.br"  # TESTE — trocar para barbara após validação
     operador_nome: "Natalia"
     approver_email: "natalia.valverde@timecaptacao.com.br"  # TESTE — trocar para barbara após validação

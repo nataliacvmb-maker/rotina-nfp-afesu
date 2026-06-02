@@ -1,0 +1,54 @@
+name: Setup Planilha e Apps Script
+
+on:
+  workflow_dispatch:
+    inputs:
+      spreadsheet_id:
+        description: "ID da planilha Google Sheets (deixe em branco para usar o padrão do clients.yaml)"
+        required: false
+        default: "1icbio-EAFvZggaQEuVvth_GCAINGLyD5WpNuGSRGaXo"
+      step:
+        description: "Qual etapa executar"
+        required: true
+        default: "ambos"
+        type: choice
+        options:
+          - ambos
+          - somente_planilha
+          - somente_appsscript
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install google-auth google-auth-oauthlib google-api-python-client pyyaml requests
+
+      - name: Reconstituir token Google
+        env:
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_TOKEN_PATH: /tmp/google_token.json
+        run: python scripts/make_token.py
+
+      - name: Configurar planilha (abas, cabeçalhos, clientes)
+        if: ${{ inputs.step == 'ambos' || inputs.step == 'somente_planilha' }}
+        env:
+          GOOGLE_TOKEN_PATH: /tmp/google_token.json
+          SPREADSHEET_ID: ${{ inputs.spreadsheet_id }}
+        run: python scripts/setup_planilha.py
+
+      - name: Upload Apps Script (Codigo, Email, Calendario, Setup)
+        if: ${{ inputs.step == 'ambos' || inputs.step == 'somente_appsscript' }}
+        env:
+          GOOGLE_TOKEN_PATH: /tmp/google_token.json
+          SPREADSHEET_ID: ${{ inputs.spreadsheet_id }}
+        run: python scripts/setup_appsscript.py
