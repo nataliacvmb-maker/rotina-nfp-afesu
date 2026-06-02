@@ -1,8 +1,8 @@
 """
 Cliente para a API do RD Station Marketing (token privado — API legada v1.3).
 
-Na API v1.3, contatos são importados via /conversions com tags.
-As "listas" do RD Station são representadas por tags no plano atual.
+Usa app.rdstation.com.br/api/1.3 com auth_token — compatível com plano sem OAuth2.
+Contatos são importados via /conversions; a tag funciona como segmentação de lista.
 """
 
 import os
@@ -19,9 +19,6 @@ class RDStationAPI:
         return {"auth_token": self.token}
 
     def importar_contatos(self, contatos: list[dict], tag: str) -> dict:
-        """
-        Importa contatos via conversions, adicionando a tag da lista/cliente.
-        """
         resultados = {"sucesso": 0, "erro": 0}
         for c in contatos:
             if not c.get("email"):
@@ -47,13 +44,3 @@ class RDStationAPI:
             except Exception:
                 resultados["erro"] += 1
         return resultados
-
-    def listar_tags(self) -> list:
-        """Retorna todas as tags da conta."""
-        resp = requests.get(
-            f"{self.BASE_URL}/tags",
-            params=self._params(),
-            timeout=30,
-        )
-        resp.raise_for_status()
-        return resp.json()
