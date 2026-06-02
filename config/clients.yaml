@@ -1,17 +1,19 @@
 # Configuração dos clientes
 #
 # rdstation_list_id:  tag usada no RD Station para segmentar esta base
-#                     (criada automaticamente na primeira importação)
 # operador_email:     quem cria a campanha no RD Station (recebe HTML pronto + checklist)
 # approver_email:     quem aprova o email teste no RD Station
-# copy_email:         quem escreve o roteiro.yaml (recebe feedback de revisão)
-# criacao_email:      quem faz o banner — até dois responsáveis
+# copy_email:         quem escreve o roteiro.yaml
+# criacao_email:      quem faz o banner
+# spreadsheet_id:     ID da planilha Google Sheets de controle de campanhas
+#                     (URL: docs.google.com/spreadsheets/d/ID_AQUI/edit)
 
 clients:
   - name: "Desatadora dos Nós"
     slug: "desatadora"
     drive_folder_id: "1-OyPnBrWx8BjXr7W0zxcMmPSnFlseVQ1"
     rdstation_list_id: "Desatadora dos Nós"
+    spreadsheet_id: ""   # ← cole o ID da planilha após criá-la
     operador_email: "roseane.welter@timecaptacao.com.br"
     operador_nome: "Rose"
     approver_email: "roseane.welter@timecaptacao.com.br"

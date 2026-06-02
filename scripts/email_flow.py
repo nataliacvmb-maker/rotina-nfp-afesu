@@ -25,6 +25,7 @@ from drive_utils import (
     baixar_roteiro, ler_estado, salvar_estado
 )
 from approval import notificar_operador
+from sheets_utils import atualizar_planilha_apos_disparo
 
 
 def carregar_config() -> dict:
@@ -51,6 +52,7 @@ def processar_cliente(cliente: dict, config: dict):
     approver_email = cliente.get("approver_email", "")
     approver_nome = cliente.get("approver_name", "")
     de_email = config.get("notification_from_email", "")
+    spreadsheet_id = cliente.get("spreadsheet_id", "")
 
     if not drive_id or not list_id or not operador_email:
         print(f"[{nome}] ⚠ Configuração incompleta — pulando")
@@ -129,6 +131,19 @@ def processar_cliente(cliente: dict, config: dict):
             approver_nome=approver_nome,
             de_email=de_email,
         )
+
+        # Grava links na planilha de controle (Drive + HTML)
+        try:
+            atualizar_planilha_apos_disparo(
+                spreadsheet_id=spreadsheet_id,
+                cliente_slug=cliente["slug"],
+                campanha_id=campanha_id,
+                html_path=html_path,
+                pasta_drive_id=drive_id,
+                pasta_drive_link=disparo.get("pasta_base_link", "").rsplit("/", 1)[0] if disparo.get("pasta_base_link") else "",
+            )
+        except Exception as e:
+            print(f"[{nome}] {disparo_nome}: ⚠ Erro ao atualizar planilha: {e}")
 
         dados_campanha = {
             "campanha_id": campanha_id,

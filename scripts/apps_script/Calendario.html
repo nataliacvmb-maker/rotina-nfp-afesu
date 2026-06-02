@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title><?= titulo ?> — Calendário de Comunicação</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #333; }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(135deg, #1a252f 0%, #2c3e50 100%);
+    color: white;
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .header-left h1 { font-size: 22px; font-weight: 700; letter-spacing: -.3px; }
+  .header-left p  { font-size: 13px; color: #95a5a6; margin-top: 2px; }
+  .nav-btn {
+    background: rgba(255,255,255,.12); border: none; color: white;
+    padding: 8px 18px; border-radius: 6px; cursor: pointer;
+    font-size: 14px; text-decoration: none; display: inline-block;
+    transition: background .2s;
+  }
+  .nav-btn:hover { background: rgba(255,255,255,.22); }
+  .month-label { font-size: 15px; font-weight: 600; min-width: 110px; text-align: center; }
+
+  /* LEGENDA */
+  .legenda {
+    display: flex; gap: 16px; flex-wrap: wrap;
+    padding: 12px 32px; background: #fff; border-bottom: 1px solid #e5e7eb;
+  }
+  .leg-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #555; }
+  .leg-dot  { width: 12px; height: 12px; border-radius: 3px; }
+
+  /* GRADE DO CALENDÁRIO */
+  .cal-wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px 40px; }
+
+  .month-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    background: #d1d5db;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,.07);
+  }
+
+  .day-header {
+    background: #374151;
+    color: #d1d5db;
+    text-align: center;
+    padding: 10px 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+
+  .day-cell {
+    background: #fff;
+    min-height: 110px;
+    padding: 8px 6px 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .day-cell.outro-mes { background: #f9fafb; }
+  .day-cell.hoje      { background: #fffbeb; outline: 2px solid #f59e0b; outline-offset: -2px; }
+  .day-cell.fim-semana { background: #fafafa; }
+
+  .day-num {
+    font-size: 13px;
+    font-weight: 600;
+    color: #9ca3af;
+    margin-bottom: 4px;
+    line-height: 1;
+  }
+  .day-cell.hoje .day-num { color: #d97706; }
+  .day-cell.outro-mes .day-num { color: #d1d5db; }
+
+  /* PILLS */
+  .pill {
+    font-size: 10.5px;
+    padding: 3px 7px;
+    border-radius: 10px;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    cursor: default;
+    position: relative;
+  }
+  .pill-email     { background: #fee2e2; color: #991b1b; }
+  .pill-instagram { background: #dbeafe; color: #1e3a8a; }
+  .pill-whatsapp  { background: #d1fae5; color: #065f46; }
+  .pill-sms       { background: #fef3c7; color: #92400e; }
+  .pill-outros    { background: #f3f4f6; color: #374151; }
+
+  .pill .status-ic {
+    font-size: 9px;
+    margin-left: 3px;
+    vertical-align: middle;
+  }
+
+  /* TOOLTIP ao hover */
+  .pill:hover::after {
+    content: attr(data-tooltip);
+    position: fixed;
+    background: #1f2937;
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: pre;
+    z-index: 999;
+    pointer-events: none;
+    left: var(--tx, 0);
+    top: var(--ty, 0);
+    max-width: 240px;
+    white-space: normal;
+    line-height: 1.4;
+    box-shadow: 0 4px 12px rgba(0,0,0,.2);
+  }
+
+  /* SIDEBAR de lista (opcional abaixo do calendário) */
+  .lista-campanhas {
+    margin-top: 32px;
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  }
+  .lista-header {
+    background: #374151;
+    color: white;
+    padding: 14px 20px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .lista-row {
+    display: grid;
+    grid-template-columns: 100px 120px 1fr 70px 70px 70px 160px;
+    gap: 0;
+    border-bottom: 1px solid #f3f4f6;
+    align-items: center;
+  }
+  .lista-row:last-child { border-bottom: none; }
+  .lista-row:hover { background: #f9fafb; }
+  .lista-col {
+    padding: 11px 14px;
+    font-size: 13px;
+    color: #374151;
+    border-right: 1px solid #f3f4f6;
+  }
+  .lista-col:last-child { border-right: none; }
+  .lista-head {
+    background: #f3f4f6;
+    font-weight: 700;
+    font-size: 11px;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .status-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge-pronto  { background: #d1fae5; color: #065f46; }
+  .badge-andamento { background: #fef3c7; color: #92400e; }
+  .badge-aguardando { background: #fee2e2; color: #991b1b; }
+
+  @media (max-width: 700px) {
+    .header { padding: 16px; }
+    .cal-wrap { padding: 0 8px 32px; }
+    .day-cell { min-height: 70px; padding: 5px 3px; }
+    .pill { font-size: 9px; padding: 2px 5px; }
+    .lista-row { grid-template-columns: 1fr; }
+    .lista-col { border-right: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <h1><?= titulo ?></h1>
+    <p>Calendário de Comunicação</p>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <a class="nav-btn" href="?cliente=<?= clienteSlug ?>&mes=<?= mesPrev ?>">&#8592; Anterior</a>
+    <span class="month-label"><?= mesLabel ?></span>
+    <a class="nav-btn" href="?cliente=<?= clienteSlug ?>&mes=<?= mesNext ?>">Próximo &#8594;</a>
+  </div>
+</div>
+
+<!-- LEGENDA -->
+<div class="legenda">
+  <div class="leg-item"><div class="leg-dot" style="background:#fee2e2;border:1px solid #fca5a5"></div> 📧 Email</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#dbeafe;border:1px solid #93c5fd"></div> 📸 Instagram</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#d1fae5;border:1px solid #6ee7b7"></div> 💬 WhatsApp</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#fef3c7;border:1px solid #fde68a"></div> 📱 SMS</div>
+  <div class="leg-item"><div class="leg-dot" style="background:#f3f4f6;border:1px solid #d1d5db"></div> 📌 Outros</div>
+  <div class="leg-item" style="margin-left:auto;color:#aaa">⏳ Aguardando &nbsp; ✅ Pronto &nbsp; 🔴 Bloqueado</div>
+</div>
+
+<!-- CALENDÁRIO -->
+<div class="cal-wrap">
+  <div class="month-grid">
+    <!-- Cabeçalhos dias da semana -->
+    <div class="day-header">Dom</div>
+    <div class="day-header">Seg</div>
+    <div class="day-header">Ter</div>
+    <div class="day-header">Qua</div>
+    <div class="day-header">Qui</div>
+    <div class="day-header">Sex</div>
+    <div class="day-header">Sáb</div>
+
+    <!-- Células dos dias (geradas pelo servidor) -->
+    <?= diasHtml ?>
+  </div>
+
+  <!-- LISTA DETALHADA -->
+  <div class="lista-campanhas">
+    <div class="lista-header">📋 Campanhas do mês — detalhado</div>
+    <div class="lista-row lista-head">
+      <div class="lista-col">Data</div>
+      <div class="lista-col">Tipo</div>
+      <div class="lista-col">Campanha</div>
+      <div class="lista-col" style="text-align:center">Copy</div>
+      <div class="lista-col" style="text-align:center">Arte</div>
+      <div class="lista-col" style="text-align:center">Dados</div>
+      <div class="lista-col">Status</div>
+    </div>
+    <?= listaHtml ?>
+  </div>
+</div>
+
+<script>
+// Tooltip posicionamento dinâmico
+document.querySelectorAll('.pill[data-tooltip]').forEach(el => {
+  el.addEventListener('mousemove', e => {
+    el.style.setProperty('--tx', (e.clientX + 14) + 'px');
+    el.style.setProperty('--ty', (e.clientY - 8) + 'px');
+  });
+});
+</script>
+</body>
+</html>
