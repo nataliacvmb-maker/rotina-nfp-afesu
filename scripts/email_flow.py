@@ -4,7 +4,7 @@ Orquestrador do fluxo semi-automatizado de email marketing.
 O que o sistema faz automaticamente:
   1. Detecta todos os disparos prontos no Drive (Disparo-1, Disparo-2, etc.)
   2. Importa os contatos no RD Station com a tag do cliente
-  3. Gera o HTML completo do email (banner + copy + botão CTA)
+  3. Gera o HTML completo do email (logo + header + texto + imagem CTA + final)
   4. Envia email ao operador com checklist + HTML em anexo
 
 O que o operador faz manualmente no RD Station:
@@ -21,7 +21,7 @@ from pathlib import Path
 
 from rdstation_api import RDStationAPI
 from drive_utils import (
-    verificar_insumos, baixar_base_emails, baixar_banner,
+    verificar_insumos, baixar_base_emails, baixar_imagem_opcional,
     baixar_roteiro, ler_estado, salvar_estado
 )
 from approval import notificar_operador
@@ -50,8 +50,6 @@ def processar_cliente(cliente: dict, config: dict):
     operador_nome = cliente.get("operador_nome", "")
     approver_email = cliente.get("approver_email", "")
     approver_nome = cliente.get("approver_name", "")
-    criacao_email_2 = cliente.get("criacao_email_2", "")
-    criacao_nome_2 = cliente.get("criacao_nome_2", "")
     de_email = config.get("notification_from_email", "")
 
     if not drive_id or not list_id or not operador_email:
@@ -91,7 +89,6 @@ def processar_cliente(cliente: dict, config: dict):
             print(f"[{nome}] {disparo_nome}: ⚠ Erro na importação: {e} — continuando")
             importacao_ok = False
 
-        banner_path = baixar_banner(disparo["banner_id"])
         roteiro = baixar_roteiro(disparo["roteiro_id"])
 
         if not roteiro.get("assunto"):
@@ -101,7 +98,20 @@ def processar_cliente(cliente: dict, config: dict):
             print(f"[{nome}] {disparo_nome}: ⚠ roteiro.yaml sem 'cta_url' — abortando")
             continue
 
-        html = _montar_html(nome, mes, banner_path, roteiro)
+        # Baixa cada imagem pelo seu papel
+        logo_path     = baixar_imagem_opcional(disparo.get("logo_id"),        "logo")
+        header_path   = baixar_imagem_opcional(disparo.get("header_id"),       "header")
+        campanha_path = baixar_imagem_opcional(disparo.get("campanha_img_id"), "campanha")
+        final_path    = baixar_imagem_opcional(disparo.get("final_id"),        "final")
+
+        html = _montar_html(
+            cliente_nome=nome,
+            roteiro=roteiro,
+            logo_path=logo_path,
+            header_path=header_path,
+            campanha_path=campanha_path,
+            final_path=final_path,
+        )
         html_path = f"/tmp/{cliente['slug']}_{disparo_nome}_{mes}.html"
         with open(html_path, "w", encoding="utf-8") as f:
             f.write(html)
@@ -136,28 +146,58 @@ def processar_cliente(cliente: dict, config: dict):
         print(f"[{nome}] {disparo_nome}: ✓ Operador notificado")
 
 
-def _montar_html(cliente_nome: str, mes: str, banner_path: str, roteiro: dict) -> str:
+def _img_b64(path: str) -> str:
+    """Converte imagem local para data URL base64."""
     import base64
-    ext = banner_path.split(".")[-1].lower()
+    ext = path.rsplit(".", 1)[-1].lower()
     mime = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
-    with open(banner_path, "rb") as f:
-        banner_b64 = base64.b64encode(f.read()).decode()
-    banner_data_url = f"data:{mime};base64,{banner_b64}"
+    with open(path, "rb") as f:
+        b64 = base64.b64encode(f.read()).decode()
+    return f"data:{mime};base64,{b64}"
 
-    titulo_html = ""
-    if roteiro.get("titulo"):
-        titulo_html = f'<div class="titulo"><h2>{roteiro["titulo"]}</h2></div>'
+
+def _montar_html(
+    cliente_nome: str,
+    roteiro: dict,
+    logo_path: str | None,
+    header_path: str | None,
+    campanha_path: str | None,
+    final_path: str | None,
+) -> str:
+    """
+    Monta HTML do email com estrutura:
+      [logo] → [header] → [texto] → [imagem campanha clicável] → [imagem final] → [footer]
+    Cada bloco é omitido se o arquivo não existir.
+    """
+    cta_url = roteiro.get("cta_url", "")
+
+    logo_html = ""
+    if logo_path:
+        logo_html = f'<div class="logo"><img src="{_img_b64(logo_path)}" alt="{cliente_nome} logo"></div>'
+
+    header_html = ""
+    if header_path:
+        header_html = f'<div class="header-img"><img src="{_img_b64(header_path)}" alt=""></div>'
 
     corpo_html = ""
     if roteiro.get("corpo"):
         linhas = roteiro["corpo"].strip().replace("\n\n", "</p><p>").replace("\n", "<br>")
         corpo_html = f'<div class="corpo"><p>{linhas}</p></div>'
 
-    cta_html = ""
-    if roteiro.get("cta_url"):
-        cta_texto = roteiro.get("cta_texto", "Doe agora")
-        cta_url = roteiro["cta_url"]
-        cta_html = f'<div class="cta"><a href="{cta_url}" class="btn-cta">{cta_texto}</a></div>'
+    campanha_html = ""
+    if campanha_path and cta_url:
+        campanha_html = (
+            f'<div class="campanha">'
+            f'<a href="{cta_url}" target="_blank">'
+            f'<img src="{_img_b64(campanha_path)}" alt="Doe agora" style="width:100%;height:auto;display:block">'
+            f'</a></div>'
+        )
+    elif campanha_path:
+        campanha_html = f'<div class="campanha"><img src="{_img_b64(campanha_path)}" alt="" style="width:100%;height:auto;display:block"></div>'
+
+    final_html = ""
+    if final_path:
+        final_html = f'<div class="final-img"><img src="{_img_b64(final_path)}" alt=""></div>'
 
     return f"""<!DOCTYPE html>
 <html lang="pt-BR">
@@ -168,24 +208,24 @@ def _montar_html(cliente_nome: str, mes: str, banner_path: str, roteiro: dict) -
   <style>
     body{{margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif}}
     .wrapper{{max-width:600px;margin:0 auto;background:#fff}}
-    .titulo{{padding:24px 24px 0;text-align:center;color:#222}}
-    .titulo h2{{margin:0;font-size:22px;line-height:1.3}}
-    .banner img{{width:100%;height:auto;display:block}}
-    .corpo{{padding:20px 24px;color:#444;font-size:15px;line-height:1.7}}
-    .corpo p{{margin:0 0 12px}}
-    .cta{{padding:20px 24px 28px;text-align:center}}
-    .btn-cta{{display:inline-block;padding:14px 36px;background:#e05c00;color:#fff;
-      text-decoration:none;border-radius:4px;font-size:16px;font-weight:bold;letter-spacing:.3px}}
-    .footer{{padding:20px 24px;text-align:center;font-size:12px;color:#999;border-top:1px solid #eee}}
-    .footer a{{color:#999}}
+    .logo{{padding:20px 24px;text-align:center;background:#fff}}
+    .logo img{{max-height:70px;width:auto}}
+    .header-img img{{width:100%;height:auto;display:block}}
+    .corpo{{padding:24px 28px;color:#444;font-size:15px;line-height:1.8}}
+    .corpo p{{margin:0 0 14px}}
+    .campanha{{margin:0}}
+    .final-img img{{width:100%;height:auto;display:block}}
+    .footer{{padding:16px 24px;text-align:center;font-size:11px;color:#aaa;border-top:1px solid #eee}}
+    .footer a{{color:#aaa}}
   </style>
 </head>
 <body>
   <div class="wrapper">
-    {titulo_html}
-    <div class="banner"><img src="{banner_data_url}" alt="{cliente_nome}"></div>
+    {logo_html}
+    {header_html}
     {corpo_html}
-    {cta_html}
+    {campanha_html}
+    {final_html}
     <div class="footer">
       Você está recebendo este email porque está cadastrado na base da <strong>{cliente_nome}</strong>.<br>
       Para se descadastrar, <a href="[unsubscribe]">clique aqui</a>.

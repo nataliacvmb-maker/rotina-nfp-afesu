@@ -76,12 +76,38 @@ def _mes_atual() -> str:
     return f"{meses[hoje.month]}-{hoje.year}"
 
 
+def _classificar_imagens_banner(arquivos: list[dict]) -> dict:
+    """
+    Classifica imagens da pasta banner por nome.
+    Padrão esperado: logo, header, campanha/link, final.
+    Retorna dict com chaves: logo, header, campanha, final — cada uma pode ser None.
+    """
+    imgs = [f for f in arquivos if any(f["name"].lower().endswith(e) for e in (".jpg", ".jpeg", ".png"))]
+
+    def _match(nome: str, *palavras) -> bool:
+        n = nome.lower()
+        return any(p in n for p in palavras)
+
+    resultado = {"logo": None, "header": None, "campanha": None, "final": None}
+    for img in imgs:
+        n = img["name"]
+        if _match(n, "logo"):
+            resultado["logo"] = img
+        elif _match(n, "campanha", "link"):
+            resultado["campanha"] = img
+        elif _match(n, "final"):
+            resultado["final"] = img
+        elif _match(n, "header", "banner", "capa"):
+            resultado["header"] = img
+
+    return resultado
+
+
 def verificar_insumos(drive_folder_id: str) -> list[dict]:
     """
     Retorna lista de disparos prontos para o mês atual.
-    Cada item: {disparo_nome, campanha_id, base_id, base_nome,
-                banner_id, banner_nome, roteiro_id, roteiro_nome,
-                pasta_base_link, pasta_banner_link, pasta_copy_link}
+    Estrutura de cada item inclui IDs das imagens classificadas por nome:
+    logo_id, header_id, campanha_id_img, final_id — além de base e roteiro.
     """
     mes = _mes_atual()
 
@@ -114,16 +140,16 @@ def verificar_insumos(drive_folder_id: str) -> list[dict]:
             f for f in _listar_filhos(pasta_base)
             if any(f["name"].lower().endswith(ext) for ext in (".xlsx", ".xls", ".csv"))
         ]
-        arquivos_banner = [
-            f for f in _listar_filhos(pasta_banner)
-            if any(f["name"].lower().endswith(ext) for ext in (".jpg", ".jpeg", ".png"))
-        ]
+        imagens = _classificar_imagens_banner(_listar_filhos(pasta_banner))
         arquivos_roteiro = [
             f for f in _listar_filhos(pasta_copy)
             if f["name"] == "roteiro.yaml"
         ]
 
-        if not arquivos_base or not arquivos_banner or not arquivos_roteiro:
+        # Exige ao menos header (ou qualquer imagem principal) e roteiro
+        if not arquivos_base or not arquivos_roteiro:
+            continue
+        if not any(imagens.values()):
             continue
 
         prontos.append({
@@ -131,8 +157,14 @@ def verificar_insumos(drive_folder_id: str) -> list[dict]:
             "campanha_id": f"{mes}/{disparo_nome}",
             "base_id": arquivos_base[0]["id"],
             "base_nome": arquivos_base[0]["name"],
-            "banner_id": arquivos_banner[0]["id"],
-            "banner_nome": arquivos_banner[0]["name"],
+            # Imagens classificadas por papel
+            "logo_id": imagens["logo"]["id"] if imagens["logo"] else None,
+            "header_id": imagens["header"]["id"] if imagens["header"] else None,
+            "campanha_img_id": imagens["campanha"]["id"] if imagens["campanha"] else None,
+            "final_id": imagens["final"]["id"] if imagens["final"] else None,
+            # Mantém banner_id apontando para header (retrocompatibilidade)
+            "banner_id": (imagens["header"] or imagens["campanha"] or next(v for v in imagens.values() if v))["id"],
+            "banner_nome": (imagens["header"] or imagens["campanha"] or next(v for v in imagens.values() if v))["name"],
             "roteiro_id": arquivos_roteiro[0]["id"],
             "roteiro_nome": arquivos_roteiro[0]["name"],
             "pasta_base_link": f"https://drive.google.com/drive/folders/{pasta_base}",
@@ -179,13 +211,23 @@ def baixar_base_emails(file_id: str) -> list[dict]:
     return contatos
 
 
-def baixar_banner(file_id: str) -> str:
+def baixar_imagem(file_id: str, prefixo: str = "img") -> str:
     meta = _service().files().get(fileId=file_id, fields="name").execute()
     ext = meta["name"].rsplit(".", 1)[-1].lower()
-    path = f"/tmp/banner.{ext}"
+    path = f"/tmp/{prefixo}.{ext}"
     with open(path, "wb") as f:
         f.write(_baixar_arquivo(file_id))
     return path
+
+
+def baixar_banner(file_id: str) -> str:
+    return baixar_imagem(file_id, "banner")
+
+
+def baixar_imagem_opcional(file_id: str | None, prefixo: str) -> str | None:
+    if not file_id:
+        return None
+    return baixar_imagem(file_id, prefixo)
 
 
 def baixar_roteiro(file_id: str) -> dict:
