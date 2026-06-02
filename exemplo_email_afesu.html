@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Exemplo — Email Afesu Jun-2026</title>
+  <style>
+    body{margin:0;padding:20px;background:#f4f4f4;font-family:Arial,sans-serif}
+    .wrapper{max-width:600px;margin:0 auto;background:#fff;border-radius:4px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+
+    /* ── TÍTULO ── */
+    .titulo{padding:24px 24px 0;text-align:center;color:#222}
+    .titulo h2{margin:0;font-size:22px;line-height:1.3}
+
+    /* ── BANNER ── */
+    .banner{background:#e8e0d4;height:280px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px}
+    .banner-placeholder{font-size:13px;color:#888;font-style:italic}
+    .banner-tag{font-size:11px;background:#ddd;color:#666;padding:4px 10px;border-radius:20px}
+
+    /* ── CORPO ── */
+    .corpo{padding:20px 24px;color:#444;font-size:15px;line-height:1.7}
+    .corpo p{margin:0 0 12px}
+
+    /* ── CTA ── */
+    .cta{padding:20px 24px 28px;text-align:center}
+    .btn-cta{display:inline-block;padding:14px 36px;background:#e05c00;color:#fff;
+      text-decoration:none;border-radius:4px;font-size:16px;font-weight:bold;letter-spacing:.3px}
+
+    /* ── FOOTER ── */
+    .footer{padding:20px 24px;text-align:center;font-size:12px;color:#999;border-top:1px solid #eee}
+    .footer a{color:#999}
+
+    /* ── PREVIEW INFO (não vai no email real) ── */
+    .preview-header{background:#1a1a2e;color:#fff;padding:12px 24px;font-size:12px;font-family:monospace;border-radius:4px 4px 0 0}
+    .preview-header span{color:#f0a020}
+  </style>
+</head>
+<body>
+
+  <!-- INFO DE PREVIEW (não aparece no email real) -->
+  <div style="max-width:600px;margin:0 auto 8px">
+    <div class="preview-header">
+      📧 EXEMPLO — como chega o HTML para o operador<br>
+      <span>Assunto:</span> Sua doação transforma vidas — Afesu Jun-2026<br>
+      <span>De:</span> TIME Captação &lt;sistema.timecaptacao@gmail.com&gt;<br>
+      <span>Para:</span> natalia.valverde@timecaptacao.com.br (operador)
+    </div>
+  </div>
+
+  <div class="wrapper">
+
+    <!-- TÍTULO (opcional, acima do banner) -->
+    <div class="titulo">
+      <h2>Você faz parte da história da Afesu</h2>
+    </div>
+
+    <!-- BANNER (no email real: imagem base64 do Drive) -->
+    <div class="banner">
+      <div class="banner-placeholder">📷 Aqui entra o banner enviado pela equipe de criação</div>
+      <div class="banner-tag">600px × 300px · .jpg ou .png</div>
+    </div>
+
+    <!-- CORPO -->
+    <div class="corpo">
+      <p>Olá! Graças à sua generosidade, crianças e adolescentes em situação de vulnerabilidade têm acesso a educação, cultura e cuidado.</p>
+
+      <p>Neste mês de junho, a Afesu precisa do seu apoio para manter as atividades que mudam vidas todos os dias.</p>
+
+      <p>Com apenas R$ 30 por mês você garante um mês de atividades para uma criança. Faça sua doação agora e seja parte dessa corrente do bem.</p>
+    </div>
+
+    <!-- BOTÃO CTA -->
+    <div class="cta">
+      <a href="https://doacoes.afesu.org.br" class="btn-cta">Doe agora</a>
+    </div>
+
+    <!-- RODAPÉ -->
+    <div class="footer">
+      Você está recebendo este email porque está cadastrado na base da <strong>Afesu</strong>.<br>
+      Para se descadastrar, <a href="[unsubscribe]">clique aqui</a>.
+    </div>
+
+  </div>
+
+  <!-- CHECKLIST que acompanha o email ao operador -->
+  <div style="max-width:600px;margin:12px auto 0;background:#fff;border:1px solid #ddd;border-radius:4px;padding:20px;font-family:monospace;font-size:13px;color:#333">
+    <strong style="font-size:14px">📋 CHECKLIST — O QUE FAZER NO RD STATION</strong><br><br>
+
+    [ ] 1. Criar nova campanha de email marketing<br><br>
+
+    [ ] 2. Configurar a campanha:<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Assunto: <strong>Sua doação transforma vidas — Afesu Jun-2026</strong><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;De (nome): <strong>TIME Captação</strong><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Segmentação: tag <strong>"Afesu"</strong><br><br>
+
+    [ ] 3. Colar o conteúdo:<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ Abra o arquivo em anexo: <strong>Afesu_Disparo-1_Jun-2026.html</strong><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ Copie tudo (Ctrl+A, Ctrl+C)<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;→ No RD Station: Editor HTML → cole o conteúdo<br><br>
+
+    [ ] 4. Enviar email TESTE para:<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>Natalia — natalia.valverde@timecaptacao.com.br</strong><br><br>
+
+    [ ] 5. Aguardar aprovação e disparar para a tag <strong>"Afesu"</strong><br><br>
+
+    <div style="border-top:1px solid #eee;margin-top:12px;padding-top:12px;color:#666">
+      ✅ 2 contatos importados · TIME Captação (sistema automático)
+    </div>
+  </div>
+
+</body>
+</html>
