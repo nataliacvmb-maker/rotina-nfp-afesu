@@ -44,8 +44,19 @@ def _auth_header(creds) -> dict:
 
 
 def _gs_files(apps_script_dir: Path) -> list:
+    manifest = {
+        "timeZone": "America/Sao_Paulo",
+        "dependencies": {},
+        "exceptionLogging": "STACKDRIVER",
+        "runtimeVersion": "V8",
+        "webapp": {
+            "executeAs": "USER_DEPLOYING",
+            "access": "ANYONE_ANONYMOUS"
+        }
+    }
+    files = [{"name": "appsscript", "type": "JSON", "source": json.dumps(manifest)}]
+
     order = ["Codigo", "Email", "Calendario", "Setup"]
-    files = []
     for name in order:
         path = apps_script_dir / f"{name}.gs"
         if path.exists():
