@@ -111,6 +111,46 @@ function htmlConfirmacaoJaFeita() {
 }
 
 
+function htmlCancelamento(d) {
+  const motivoHtml = d.motivo
+    ? '<div style="background:#fff9e6;border-left:4px solid #f1c40f;padding:10px 14px;margin-top:12px;border-radius:4px;color:#555;font-size:14px"><strong>Motivo:</strong> ' + d.motivo + '</div>'
+    : '';
+
+  return '<!DOCTYPE html>'
+    + '<html><head><meta charset="UTF-8">'
+    + '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"></head>'
+    + '<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif">'
+    + '<div style="max-width:600px;margin:32px auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)">'
+
+    + '<div style="background:#dc2626;padding:24px 32px">'
+    + '<p style="margin:0;color:#fca5a5;font-size:11px;text-transform:uppercase;letter-spacing:1px">Sistema Calendario Mkt</p>'
+    + '<h1 style="margin:8px 0 0;color:#fff;font-size:21px">Campanha cancelada</h1>'
+    + '</div>'
+
+    + '<div style="padding:28px 32px">'
+    + '<p style="margin:0 0 20px;color:#555;font-size:15px">A seguinte campanha foi cancelada:</p>'
+
+    + '<div style="background:#f8f9fa;border-radius:8px;padding:20px 24px;margin-bottom:16px">'
+    + '<table style="width:100%;border-collapse:collapse;font-size:14px;color:#444">'
+    + '<tr><td style="padding:6px 0;width:130px;color:#888">Cliente</td><td style="font-weight:bold;color:#1e293b">' + d.cliente + '</td></tr>'
+    + '<tr><td style="padding:6px 0;color:#888">Campanha</td><td style="font-weight:bold">' + d.campanha + '</td></tr>'
+    + '<tr><td style="padding:6px 0;color:#888">Mes</td><td>' + d.mesAno + '</td></tr>'
+    + '<tr><td style="padding:6px 0;color:#888">Data</td><td>' + d.dataFormatada + '</td></tr>'
+    + '</table>'
+    + '</div>'
+
+    + motivoHtml
+
+    + '<p style="color:#555;font-size:14px;margin-top:16px">Nenhuma acao necessaria da sua parte. As entregas desta campanha foram suspensas.</p>'
+    + '</div>'
+
+    + '<div style="background:#f8f9fa;padding:14px 32px;border-top:1px solid #eee;text-align:center">'
+    + '<p style="margin:0;color:#aaa;font-size:11px">Sistema Calendario Mkt &mdash; Time Captacao NFP</p>'
+    + '</div>'
+    + '</div></body></html>';
+}
+
+
 function htmlProntoParaDisparo(cliente, campanha, mesAno) {
   return `<!DOCTYPE html>
 <html>

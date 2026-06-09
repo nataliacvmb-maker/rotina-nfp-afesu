@@ -263,6 +263,20 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;color:#1f2937;mi
         <tr id="drDrive"><td>Drive</td><td id="dDrive"></td></tr>
         <tr id="drObs" style="display:none"><td>Obs</td><td id="dObs"></td></tr>
       </table>
+      <div id="detActions" style="margin-top:18px;padding-top:14px;border-top:1px solid #f3f4f6;text-align:right">
+        <button onclick="mostrarConfirmacaoCancelar()" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px">Cancelar campanha</button>
+      </div>
+      <div id="detConfirm" style="display:none;margin-top:14px">
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:14px 16px">
+          <p style="font-size:13px;color:#dc2626;font-weight:600;margin-bottom:8px">Confirmar cancelamento</p>
+          <p style="font-size:12px;color:#555;margin-bottom:10px">Todos os times envolvidos serao notificados por email.</p>
+          <textarea id="fMotivo" rows="2" placeholder="Motivo (opcional)..." style="width:100%;border:1px solid #fecaca;border-radius:6px;padding:8px;font-size:13px;font-family:inherit;margin-bottom:10px"></textarea>
+          <div style="display:flex;gap:8px">
+            <button onclick="fecharConfirmacaoCancelar()" style="flex:1;background:#f3f4f6;color:#374151;border:none;padding:8px;border-radius:7px;cursor:pointer;font-size:13px">Voltar</button>
+            <button id="btnConfirmarCancel" onclick="executarCancelamento()" style="flex:1;background:#dc2626;color:#fff;border:none;padding:8px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600">Confirmar</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -305,10 +319,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;color:#1f2937;mi
           <input type="text" id="fBase" placeholder="Ex: Doadores ativos 2025, todos os parceiros...">
         </div>
         <div class="fg">
-          <label>Link Drive <span class="optional">(deixe vazio para criar automaticamente)</span></label>
-          <input type="url" id="fDrive" placeholder="https://drive.google.com/…">
-        </div>
-        <div class="fg">
           <label>Observações <span class="optional">(opcional)</span></label>
           <textarea id="fObs" rows="3" placeholder="Informações adicionais para as equipes…"></textarea>
         </div>
@@ -340,6 +350,7 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 // ── ESTADO ──
 let anoAtual, mesAtual, clienteAtual = '';
 let listaClientes = [], campanhas = [];
+let detalheRowNum = null;
 let coresMap = {}; // { slug: [bg, borda, texto] }
 
 // ── INIT ──
@@ -462,6 +473,10 @@ function verDetalhe(event, idx) {
   var c = campanhas[idx];
   if (!c) return;
 
+  detalheRowNum = c.rowNum || null;
+  document.getElementById('detConfirm').style.display = 'none';
+  document.getElementById('detActions').style.display = '';
+
   var cidx = listaClientes.findIndex(function(cl){ return cl.slug.toLowerCase()===c.cliente.toLowerCase(); });
   var cor  = cidx>=0 ? PALETA[cidx%PALETA.length] : ['#E5E7EB','#9CA3AF','#374151'];
 
@@ -506,7 +521,6 @@ function abrirForm(dataISO) {
   var hoje = new Date();
   document.getElementById('fData').value     = dataISO || (hoje.toISOString().slice(0,10));
   document.getElementById('fCampanha').value = '';
-  document.getElementById('fDrive').value    = '';
   document.getElementById('fObs').value      = '';
   document.getElementById('fBase').value     = '';
   document.getElementById('fTipo').value     = 'email';
@@ -522,11 +536,10 @@ function abrirForm(dataISO) {
 
 function submeter(event) {
   event.preventDefault();
-  var cliente  = document.getElementById('fCliente').value;
-  var tipo     = document.getElementById('fTipo').value;
-  var data     = document.getElementById('fData').value;
-  var campanha = document.getElementById('fCampanha').value.trim();
-  var linkDrive     = document.getElementById('fDrive').value.trim();
+  var cliente       = document.getElementById('fCliente').value;
+  var tipo          = document.getElementById('fTipo').value;
+  var data          = document.getElementById('fData').value;
+  var campanha      = document.getElementById('fCampanha').value.trim();
   var obs           = document.getElementById('fObs').value.trim();
   var instrucaoBase = document.getElementById('fBase').value.trim();
 
@@ -541,7 +554,7 @@ function submeter(event) {
     .withSuccessHandler(function(r){
       if (r.ok){
         fecharModal('overlayForm');
-        toast('✅ Campanha criada! Emails enviados às equipes.');
+        toast('Campanha criada! Emails enviados às equipes.');
         carregar();
       } else {
         btn.disabled = false;
@@ -554,7 +567,46 @@ function submeter(event) {
       btn.textContent = 'Criar Campanha';
       toast('Erro ao salvar: '+e.message,'erro');
     })
-    .criarCampanhaPortal({cliente:cliente,tipo:tipo,data:data,campanha:campanha,linkDrive:linkDrive,obs:obs,instrucaoBase:instrucaoBase});
+    .criarCampanhaPortal({cliente:cliente,tipo:tipo,data:data,campanha:campanha,obs:obs,instrucaoBase:instrucaoBase});
+}
+
+// ── CANCELAMENTO ──
+function mostrarConfirmacaoCancelar() {
+  document.getElementById('fMotivo').value = '';
+  document.getElementById('detConfirm').style.display = '';
+  document.getElementById('detActions').style.display = 'none';
+}
+
+function fecharConfirmacaoCancelar() {
+  document.getElementById('detConfirm').style.display = 'none';
+  document.getElementById('detActions').style.display = '';
+}
+
+function executarCancelamento() {
+  if (!detalheRowNum) { toast('Erro: linha não identificada.','erro'); return; }
+  var motivo = document.getElementById('fMotivo').value.trim();
+  var btn = document.getElementById('btnConfirmarCancel');
+  btn.disabled = true;
+  btn.textContent = 'Cancelando…';
+
+  google.script.run
+    .withSuccessHandler(function(r){
+      btn.disabled = false;
+      btn.textContent = 'Confirmar';
+      if (r.ok) {
+        fecharModal('overlayDet');
+        toast('Campanha cancelada. Equipes notificadas por email.');
+        carregar();
+      } else {
+        toast('Erro: '+r.erro,'erro');
+      }
+    })
+    .withFailureHandler(function(e){
+      btn.disabled = false;
+      btn.textContent = 'Confirmar';
+      toast('Erro: '+e.message,'erro');
+    })
+    .cancelarCampanhaPortal({rowNum: detalheRowNum, motivo: motivo});
 }
 
 // ── UTILITÁRIOS ──

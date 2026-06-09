@@ -286,6 +286,62 @@ function criarCampanhaPortal(dados) {
 
 
 // ============================================================
+// CANCELA CAMPANHA E NOTIFICA EQUIPES
+// ============================================================
+
+function cancelarCampanhaPortal(dados) {
+  try {
+    const rowNum = parseInt(dados.rowNum);
+    if (!rowNum || rowNum < 2) return { ok: false, erro: 'Linha inválida.' };
+
+    const ss    = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_CAMPANHAS);
+
+    sheet.getRange(rowNum, COL.STATUS).setValue('Cancelada');
+
+    try { enviarCancelamento(rowNum, dados.motivo || ''); } catch(e) { console.error('Cancelamento email erro:', e); }
+
+    return { ok: true };
+  } catch(e) {
+    return { ok: false, erro: e.message };
+  }
+}
+
+function enviarCancelamento(row, motivo) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_CAMPANHAS);
+  const linha = sheet.getRange(row, 1, 1, COL.OBS).getValues()[0];
+
+  const cliente       = linha[COL.CLIENTE - 1];
+  const tipo          = linha[COL.TIPO - 1];
+  const campanha      = linha[COL.CAMPANHA - 1];
+  const mesAno        = linha[COL.MES_ANO - 1];
+  const data          = linha[COL.DATA - 1];
+  const dataFormatada = data ? Utilities.formatDate(new Date(data), 'America/Sao_Paulo', 'dd/MM/yyyy') : '—';
+
+  const infoCliente = getInfoCliente(cliente);
+  if (!infoCliente) return;
+
+  const tipoNorm = (tipo || '').toString().toLowerCase();
+  const emails = [];
+  if (infoCliente.email_copy)     emails.push(infoCliente.email_copy);
+  if (infoCliente.email_arte)     emails.push(infoCliente.email_arte);
+  if (tipoNorm === 'email' && infoCliente.email_dados) emails.push(infoCliente.email_dados);
+  if (infoCliente.email_operador) emails.push(infoCliente.email_operador);
+
+  const uniqueEmails = emails.filter(function(v, i, a){ return a.indexOf(v) === i; });
+  const html = htmlCancelamento({ cliente: cliente, campanha: campanha, mesAno: mesAno, dataFormatada: dataFormatada, motivo: motivo });
+
+  for (var i = 0; i < uniqueEmails.length; i++) {
+    GmailApp.sendEmail(uniqueEmails[i], '[' + cliente + '] Campanha cancelada: ' + campanha, '', {
+      htmlBody: html,
+      name: 'Sistema Calendario Mkt',
+    });
+  }
+}
+
+
+// ============================================================
 // CRIA ESTRUTURA DE PASTAS NO DRIVE
 // ============================================================
 

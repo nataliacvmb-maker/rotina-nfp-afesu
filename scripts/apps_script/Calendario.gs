@@ -77,6 +77,8 @@ function getCampanhasDoMes(sheet, clienteSlug, ano, mes) {
     const tipo   = (linha[COL.TIPO - 1] || 'outros').toString().toLowerCase();
     const status = linha[COL.STATUS - 1] || '';
 
+    if (status === 'Cancelada') continue;
+
     result.push({
       rowNum:    i + 1,
       dia:       dt.getDate(),
