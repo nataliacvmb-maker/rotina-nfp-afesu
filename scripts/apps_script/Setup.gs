@@ -28,7 +28,8 @@ function configurarAbaCampanhas(sheet) {
     'Cliente', 'Tipo', 'Mês-Ano', 'Data Planejada',
     'Campanha / Assunto',
     'Copy', 'Arte', 'Dados', 'Status Geral',
-    'Link Drive (insumos)', 'Link HTML (RD Station)', 'Observações'
+    'Link Drive (insumos)', 'Link HTML (RD Station)', 'Observações',
+    'Prazo Copy', 'Prazo Arte', 'Prazo Dados'
   ];
 
   const hrng = sheet.getRange(1, 1, 1, headers.length);
@@ -41,7 +42,7 @@ function configurarAbaCampanhas(sheet) {
   sheet.setRowHeight(1, 36);
 
   // Larguras das colunas
-  const larguras = [100, 110, 90, 120, 260, 60, 60, 60, 180, 200, 200, 200];
+  const larguras = [100, 110, 90, 120, 260, 60, 60, 60, 180, 200, 200, 200, 110, 110, 110];
   larguras.forEach((w, i) => sheet.setColumnWidth(i + 1, w));
 
   // Validação: coluna Tipo (B)

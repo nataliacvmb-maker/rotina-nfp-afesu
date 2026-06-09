@@ -6,24 +6,28 @@ const SHEET_CAMPANHAS = 'CAMPANHAS';
 const SHEET_CLIENTES  = 'CLIENTES';
 const SHEET_LINKS     = 'LINKS CALENDÁRIOS';
 
-const STATUS_PENDENTE = 'Pendente';
-const STATUS_OK       = 'Entregue';
-const STATUS_BLOQUEIO = 'Bloqueado';
+const STATUS_PENDENTE        = 'Pendente';
+const STATUS_OK              = 'Entregue';
+const STATUS_BLOQUEIO        = 'Bloqueado';
+const STATUS_AGUARDANDO_COPY = 'Aguardando Copy';
 
 // Colunas da aba CAMPANHAS (índice 1-based)
 const COL = {
-  CLIENTE:    1,  // A
-  TIPO:       2,  // B
-  MES_ANO:    3,  // C
-  DATA:       4,  // D — data planejada do disparo
-  CAMPANHA:   5,  // E — assunto / nome da campanha
-  COPY:       6,  // F — status copy
-  ARTE:       7,  // G — status arte
-  DADOS:      8,  // H — status dados
-  STATUS:     9,  // I — status geral (calculado)
-  LINK_DRIVE: 10, // J — link da pasta no Drive (insumos)
-  LINK_HTML:  11, // K — link do HTML gerado para o RD Station
-  OBS:        12, // L — observações
+  CLIENTE:     1,  // A
+  TIPO:        2,  // B
+  MES_ANO:     3,  // C
+  DATA:        4,  // D
+  CAMPANHA:    5,  // E
+  COPY:        6,  // F
+  ARTE:        7,  // G
+  DADOS:       8,  // H
+  STATUS:      9,  // I
+  LINK_DRIVE:  10, // J
+  LINK_HTML:   11, // K
+  OBS:         12, // L
+  PRAZO_COPY:  13, // M
+  PRAZO_ARTE:  14, // N
+  PRAZO_DADOS: 15, // O
 };
 
 const TIPOS_CONFIG = {
@@ -74,9 +78,9 @@ function onEdit(e) {
 
 function inicializarStatusLinha(sheet, row) {
   sheet.getRange(row, COL.COPY).setValue(STATUS_PENDENTE);
-  sheet.getRange(row, COL.ARTE).setValue(STATUS_PENDENTE);
+  sheet.getRange(row, COL.ARTE).setValue(STATUS_AGUARDANDO_COPY);
   sheet.getRange(row, COL.DADOS).setValue(STATUS_PENDENTE);
-  sheet.getRange(row, COL.STATUS).setValue('🔴 Aguardando insumos');
+  sheet.getRange(row, COL.STATUS).setValue('Aguardando insumos');
 }
 
 
@@ -89,13 +93,16 @@ function atualizarStatusGeral(sheet, row) {
   const arte  = sheet.getRange(row, COL.ARTE).getValue();
   const dados = sheet.getRange(row, COL.DADOS).getValue();
 
+  // "Aguardando Copy" conta como Pendente para o status geral
+  const arteEf = (arte === STATUS_AGUARDANDO_COPY) ? STATUS_PENDENTE : arte;
+
   let status;
-  if (copy === STATUS_OK && arte === STATUS_OK && dados === STATUS_OK) {
+  if (copy === STATUS_OK && arteEf === STATUS_OK && dados === STATUS_OK) {
     status = 'Pronto para disparo';
     notificarOperadorPronto(row);
-  } else if ([copy, arte, dados].includes(STATUS_BLOQUEIO)) {
+  } else if ([copy, arteEf, dados].includes(STATUS_BLOQUEIO)) {
     status = 'Bloqueado';
-  } else if ([copy, arte, dados].some(s => s === STATUS_OK)) {
+  } else if ([copy, arteEf, dados].some(s => s === STATUS_OK)) {
     status = 'Em andamento';
   } else {
     status = 'Aguardando insumos';
@@ -106,85 +113,128 @@ function atualizarStatusGeral(sheet, row) {
 
 
 // ============================================================
-// ENVIA EMAIL DE BRIEFING PARA COPY + ARTE + DADOS
+// FLUXO SEQUENCIAL DE BRIEFING
+// Copy + Dados → Copy confirma → Arte → Arte + Dados confirmam → Aprovador
 // ============================================================
 
 function enviarBriefing(row, pastaLinks, instrucaoBase) {
+  // Chamada inicial: envia apenas para Copy e Dados
   const ss    = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_CAMPANHAS);
-  const dados = sheet.getRange(row, 1, 1, COL.OBS).getValues()[0];
+  const linha = sheet.getRange(row, 1, 1, COL.OBS).getValues()[0];
 
-  const cliente   = dados[COL.CLIENTE - 1];
-  const tipo      = dados[COL.TIPO - 1];
-  const mesAno    = dados[COL.MES_ANO - 1];
-  const data      = dados[COL.DATA - 1];
-  const campanha  = dados[COL.CAMPANHA - 1];
-  const obs       = dados[COL.OBS - 1];
-  const linkDrive = dados[COL.LINK_DRIVE - 1];
+  const cliente   = linha[COL.CLIENTE - 1];
+  const tipo      = linha[COL.TIPO - 1];
+  const mesAno    = linha[COL.MES_ANO - 1];
+  const data      = linha[COL.DATA - 1];
+  const campanha  = linha[COL.CAMPANHA - 1];
+  const obs       = linha[COL.OBS - 1];
+  const linkDrive = linha[COL.LINK_DRIVE - 1];
 
   const infoCliente = getInfoCliente(cliente);
-  if (!infoCliente) {
-    console.log('Cliente não encontrado:', cliente);
-    return;
-  }
+  if (!infoCliente) return;
 
-  const scriptUrl    = ScriptApp.getService().getUrl();
+  const scriptUrl     = ScriptApp.getService().getUrl();
   const dataFormatada = data ? Utilities.formatDate(new Date(data), 'America/Sao_Paulo', 'dd/MM/yyyy') : '—';
-  const tipoNorm     = (tipo || '').toString().toLowerCase();
+  const tipoNorm      = (tipo || '').toString().toLowerCase();
 
-  // Define equipes e subpastas por tipo
   const equipes = [];
+  equipes.push({
+    campo: 'copy', email: infoCliente.email_copy, nome: 'Time de Copy',
+    tarefa: tipoNorm === 'email'
+      ? 'Redação do roteiro, assunto e CTA do email.'
+      : tipoNorm === 'instagram'
+        ? 'Redação da legenda, hashtags e CTA do post.'
+        : 'Redação do conteúdo.',
+    linkPasta: pastaLinks ? pastaLinks.copy : linkDrive,
+  });
   if (tipoNorm === 'email') {
-    equipes.push({ campo: 'copy',  email: infoCliente.email_copy,  nome: 'Time de Copy',
-      tarefa: 'Redação do roteiro, assunto e CTA do email.',
-      linkPasta: pastaLinks ? pastaLinks.copy : linkDrive });
-    equipes.push({ campo: 'arte',  email: infoCliente.email_arte,  nome: 'Time de Arte',
-      tarefa: 'Criação dos banners (header, corpo e rodapé).',
-      linkPasta: pastaLinks ? pastaLinks.arte : linkDrive });
-    equipes.push({ campo: 'dados', email: infoCliente.email_dados, nome: 'Time de Dados',
+    equipes.push({
+      campo: 'dados', email: infoCliente.email_dados, nome: 'Time de Dados',
       tarefa: 'Preparação e entrega da base de contatos (.xlsx).',
       linkPasta: pastaLinks ? pastaLinks.base : linkDrive,
-      instrucaoBase: instrucaoBase || '' });
-  } else if (tipoNorm === 'instagram') {
-    equipes.push({ campo: 'copy',  email: infoCliente.email_copy,  nome: 'Time de Copy',
-      tarefa: 'Redação da legenda, hashtags e CTA do post.',
-      linkPasta: pastaLinks ? pastaLinks.arte : linkDrive });
-    equipes.push({ campo: 'arte',  email: infoCliente.email_arte,  nome: 'Time de Arte',
-      tarefa: 'Criação das artes (feed e/ou stories).',
-      linkPasta: pastaLinks ? pastaLinks.arte : linkDrive });
-  } else {
-    equipes.push({ campo: 'copy',  email: infoCliente.email_copy,  nome: 'Time de Copy',
-      tarefa: 'Redação do conteúdo.', linkPasta: linkDrive });
-    equipes.push({ campo: 'arte',  email: infoCliente.email_arte,  nome: 'Time de Arte',
-      tarefa: 'Criação das peças visuais.', linkPasta: linkDrive });
-    equipes.push({ campo: 'dados', email: infoCliente.email_dados, nome: 'Time de Dados',
-      tarefa: 'Preparação da base de contatos.', linkPasta: linkDrive });
+      instrucaoBase: instrucaoBase || '',
+    });
   }
 
   for (const equipe of equipes) {
     if (!equipe.email) continue;
-
     const linkConfirmar = scriptUrl + '?action=confirmar&row=' + row + '&campo=' + equipe.campo + '&token=' + gerarToken(row, equipe.campo);
-
     const html = htmlBriefing({
-      nomeEquipe:     equipe.nome,
-      tarefa:         equipe.tarefa,
-      cliente:        cliente,
-      tipo:           tipo,
-      campanha:       campanha,
-      mesAno:         mesAno,
-      dataFormatada:  dataFormatada,
-      obs:            obs,
-      linkDrive:      equipe.linkPasta || linkDrive,
-      instrucaoBase:  equipe.instrucaoBase || '',
-      linkConfirmar:  linkConfirmar,
+      nomeEquipe: equipe.nome, tarefa: equipe.tarefa, cliente, tipo, campanha,
+      mesAno, dataFormatada, obs, linkDrive: equipe.linkPasta || linkDrive,
+      instrucaoBase: equipe.instrucaoBase || '', linkConfirmar,
     });
-
     GmailApp.sendEmail(equipe.email, '[' + cliente + '] Novo briefing: ' + campanha + ' — ' + mesAno, '', {
-      htmlBody: html,
-      name: 'Sistema Calendario Mkt',
+      htmlBody: html, name: 'Sistema Calendario Mkt',
     });
   }
+}
+
+function _getSubpastaLink(disparoUrl, nomePasta) {
+  if (!disparoUrl) return disparoUrl;
+  const m = disparoUrl.match(/\/folders\/([-\w]+)/);
+  if (!m) return disparoUrl;
+  try {
+    const pai  = DriveApp.getFolderById(m[1]);
+    const iter = pai.searchFolders('title = "' + nomePasta + '" and trashed = false');
+    if (iter.hasNext()) return iter.next().getUrl();
+  } catch(e) { console.error('_getSubpastaLink:', e); }
+  return disparoUrl;
+}
+
+function enviarBriefingArte(row) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_CAMPANHAS);
+  const linha = sheet.getRange(row, 1, 1, COL.OBS).getValues()[0];
+
+  const cliente       = linha[COL.CLIENTE - 1];
+  const tipo          = linha[COL.TIPO - 1];
+  const campanha      = linha[COL.CAMPANHA - 1];
+  const mesAno        = linha[COL.MES_ANO - 1];
+  const data          = linha[COL.DATA - 1];
+  const obs           = linha[COL.OBS - 1];
+  const linkDrive     = linha[COL.LINK_DRIVE - 1];
+  const dataFormatada = data ? Utilities.formatDate(new Date(data), 'America/Sao_Paulo', 'dd/MM/yyyy') : '—';
+  const tipoNorm      = (tipo || '').toString().toLowerCase();
+
+  const infoCliente = getInfoCliente(cliente);
+  if (!infoCliente || !infoCliente.email_arte) return;
+
+  const linkArte     = _getSubpastaLink(linkDrive, 'Arte');
+  const scriptUrl    = ScriptApp.getService().getUrl();
+  const linkConfirmar = scriptUrl + '?action=confirmar&row=' + row + '&campo=arte&token=' + gerarToken(row, 'arte');
+  const tarefa       = tipoNorm === 'email'
+    ? 'Criação dos banners (header, corpo e rodapé).'
+    : 'Criação das artes (feed e/ou stories).';
+
+  const html = htmlBriefing({
+    nomeEquipe: 'Time de Arte', tarefa, cliente, tipo, campanha,
+    mesAno, dataFormatada, obs, linkDrive: linkArte || linkDrive,
+    instrucaoBase: '', linkConfirmar,
+  });
+  GmailApp.sendEmail(infoCliente.email_arte, '[' + cliente + '] Briefing Arte: ' + campanha + ' — ' + mesAno, '', {
+    htmlBody: html, name: 'Sistema Calendario Mkt',
+  });
+}
+
+function notificarAprovador(row) {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_CAMPANHAS);
+  const linha = sheet.getRange(row, 1, 1, COL.OBS).getValues()[0];
+
+  const cliente   = linha[COL.CLIENTE - 1];
+  const campanha  = linha[COL.CAMPANHA - 1];
+  const mesAno    = linha[COL.MES_ANO - 1];
+  const linkDrive = linha[COL.LINK_DRIVE - 1];
+
+  const infoCliente = getInfoCliente(cliente);
+  if (!infoCliente || !infoCliente.email_aprovador) return;
+
+  const html = htmlProntoParaAprovacao(cliente, campanha, mesAno, linkDrive);
+  GmailApp.sendEmail(infoCliente.email_aprovador, '[' + cliente + '] Aguardando aprovacao: ' + campanha, '', {
+    htmlBody: html, name: 'Sistema Calendario Mkt',
+  });
 }
 
 
@@ -268,13 +318,28 @@ function criarCampanhaPortal(dados) {
     sheet.getRange(newRow, COL.MES_ANO).setNumberFormat('@');
     sheet.getRange(newRow, COL.DATA).setNumberFormat('dd/MM/yyyy');
 
-    const obs = [dados.obs || '', dados.instrucaoBase ? 'Base: ' + dados.instrucaoBase : ''].filter(Boolean).join(' | ');
+    const obs          = [dados.obs || '', dados.instrucaoBase ? 'Base: ' + dados.instrucaoBase : ''].filter(Boolean).join(' | ');
+    const arteInicial  = STATUS_AGUARDANDO_COPY;
+    const dadosInicial = tipoNorm === 'email' ? STATUS_PENDENTE : STATUS_OK;
+
+    // Prazos (opcionais, recebidos do portal)
+    const prazoCopy  = dados.prazoCopy  ? new Date(dados.prazoCopy  + 'T12:00:00') : '';
+    const prazoArte  = dados.prazoArte  ? new Date(dados.prazoArte  + 'T12:00:00') : '';
+    const prazoDados = dados.prazoDados ? new Date(dados.prazoDados + 'T12:00:00') : '';
+
+    sheet.getRange(newRow, COL.PRAZO_COPY).setNumberFormat('dd/MM/yyyy');
+    sheet.getRange(newRow, COL.PRAZO_ARTE).setNumberFormat('dd/MM/yyyy');
+    sheet.getRange(newRow, COL.PRAZO_DADOS).setNumberFormat('dd/MM/yyyy');
 
     sheet.getRange(newRow, 1, 1, 12).setValues([[
       dados.cliente, dados.tipo, mesAno, dt,
-      dados.campanha, STATUS_PENDENTE, STATUS_PENDENTE, STATUS_PENDENTE,
+      dados.campanha, STATUS_PENDENTE, arteInicial, dadosInicial,
       'Aguardando insumos', linkDrive, '', obs,
     ]]);
+
+    if (prazoCopy)  sheet.getRange(newRow, COL.PRAZO_COPY).setValue(prazoCopy);
+    if (prazoArte)  sheet.getRange(newRow, COL.PRAZO_ARTE).setValue(prazoArte);
+    if (prazoDados) sheet.getRange(newRow, COL.PRAZO_DADOS).setValue(prazoDados);
 
     try { enviarBriefing(newRow, pastaLinks, dados.instrucaoBase || ''); } catch(e) { console.error('Briefing erro:', e); }
 
@@ -335,6 +400,16 @@ function editarCampanhaPortal(dados) {
 
     const obs = [dados.obs || '', dados.instrucaoBase ? 'Base: ' + dados.instrucaoBase : ''].filter(Boolean).join(' | ');
     sheet.getRange(rowNum, COL.OBS).setValue(obs);
+
+    if (dados.prazoCopy) {
+      sheet.getRange(rowNum, COL.PRAZO_COPY).setNumberFormat('dd/MM/yyyy').setValue(new Date(dados.prazoCopy + 'T12:00:00'));
+    }
+    if (dados.prazoArte) {
+      sheet.getRange(rowNum, COL.PRAZO_ARTE).setNumberFormat('dd/MM/yyyy').setValue(new Date(dados.prazoArte + 'T12:00:00'));
+    }
+    if (dados.prazoDados) {
+      sheet.getRange(rowNum, COL.PRAZO_DADOS).setNumberFormat('dd/MM/yyyy').setValue(new Date(dados.prazoDados + 'T12:00:00'));
+    }
 
     return { ok: true };
   } catch(e) {
@@ -432,7 +507,7 @@ function criarEstruturaEmail(infoCliente, campanha, mesAno) {
     const numDisp   = _contarSubpastas(pastaMes) + 1;
     const pastaDisp = pastaMes.createFolder('Disparo ' + numDisp + ' — ' + campanha);
     const pastaCopy = pastaDisp.createFolder('Copy');
-    const pastaArte = pastaDisp.createFolder('Banner');
+    const pastaArte = pastaDisp.createFolder('Arte');
     const pastaBase2= pastaDisp.createFolder('Base');
     return {
       disparo: pastaDisp.getUrl(),
@@ -486,6 +561,23 @@ function confirmarEntrega(params) {
   }
 
   sheet.getRange(row, colIdx).setValue(STATUS_OK);
+
+  // Fluxo sequencial
+  if (campo === 'copy') {
+    // Copy entregue → libera Arte
+    sheet.getRange(row, COL.ARTE).setValue(STATUS_PENDENTE);
+    try { enviarBriefingArte(row); } catch(e) { console.error('enviarBriefingArte:', e); }
+  }
+
+  if (campo === 'arte' || campo === 'dados') {
+    // Arte + Dados ambos entregues → notifica Aprovador
+    const arte  = sheet.getRange(row, COL.ARTE).getValue();
+    const dados = sheet.getRange(row, COL.DADOS).getValue();
+    if (arte === STATUS_OK && dados === STATUS_OK) {
+      try { notificarAprovador(row); } catch(e) { console.error('notificarAprovador:', e); }
+    }
+  }
+
   atualizarStatusGeral(sheet, row);
 
   const campanha = sheet.getRange(row, COL.CAMPANHA).getValue();

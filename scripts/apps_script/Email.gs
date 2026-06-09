@@ -111,6 +111,34 @@ function htmlConfirmacaoJaFeita() {
 }
 
 
+function htmlProntoParaAprovacao(cliente, campanha, mesAno, linkDrive) {
+  const linkHtml = linkDrive
+    ? '<a href="' + linkDrive + '" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-size:15px;font-weight:bold;margin-top:16px">Ver insumos no Drive</a>'
+    : '';
+  return '<!DOCTYPE html>'
+    + '<html><head><meta charset="UTF-8"></head>'
+    + '<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif">'
+    + '<div style="max-width:520px;margin:32px auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)">'
+    + '<div style="background:#7c3aed;padding:24px 32px">'
+    + '<p style="margin:0;color:#ddd6fe;font-size:11px;text-transform:uppercase;letter-spacing:1px">Sistema Calendario Mkt</p>'
+    + '<h1 style="margin:8px 0 0;color:#fff;font-size:21px">Campanha aguardando aprovacao</h1>'
+    + '</div>'
+    + '<div style="padding:28px 32px">'
+    + '<p style="color:#555;font-size:15px;margin-bottom:16px">Os insumos da campanha abaixo estao prontos para sua revisao e aprovacao:</p>'
+    + '<div style="background:#f8f9fa;border-radius:8px;padding:16px 20px;margin-bottom:20px">'
+    + '<p style="margin:0 0 4px;font-size:16px;font-weight:bold;color:#2c3e50">' + campanha + '</p>'
+    + '<p style="margin:0;color:#888;font-size:14px">' + cliente + ' — ' + mesAno + '</p>'
+    + '</div>'
+    + '<p style="color:#555;font-size:14px">Copy entregue<br>Arte entregue<br>Base de dados entregue</p>'
+    + '<div style="text-align:center">' + linkHtml + '</div>'
+    + '</div>'
+    + '<div style="background:#f8f9fa;padding:14px 32px;border-top:1px solid #eee;text-align:center">'
+    + '<p style="margin:0;color:#aaa;font-size:11px">Sistema Calendario Mkt &mdash; Time Captacao NFP</p>'
+    + '</div>'
+    + '</div></body></html>';
+}
+
+
 function htmlCancelamento(d) {
   const motivoHtml = d.motivo
     ? '<div style="background:#fff9e6;border-left:4px solid #f1c40f;padding:10px 14px;margin-top:12px;border-radius:4px;color:#555;font-size:14px"><strong>Motivo:</strong> ' + d.motivo + '</div>'

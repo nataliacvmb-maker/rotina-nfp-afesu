@@ -39,14 +39,26 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;color:#1f2937;mi
 }
 .btn-add:hover{background:#2563eb}
 
-/* LEGENDA */
+/* LEGENDA + FILTROS */
 .legenda{
-  display:flex;gap:14px;flex-wrap:wrap;
+  display:flex;gap:14px;flex-wrap:wrap;align-items:center;
   padding:9px 24px;background:#fff;
   border-bottom:1px solid #e5e7eb;min-height:38px;
 }
 .leg-item{display:flex;align-items:center;gap:6px;font-size:12px;color:#4b5563}
 .leg-dot{width:14px;height:14px;border-radius:4px;flex-shrink:0}
+.filtros{
+  display:flex;gap:6px;flex-wrap:wrap;
+  padding:8px 24px;background:#f9fafb;
+  border-bottom:1px solid #e5e7eb;
+}
+.btn-filtro{
+  background:#fff;border:1px solid #d1d5db;color:#374151;
+  padding:5px 12px;border-radius:20px;cursor:pointer;font-size:12px;
+  transition:all .15s;
+}
+.btn-filtro:hover{border-color:#3b82f6;color:#2563eb}
+.btn-filtro.ativo{background:#3b82f6;color:#fff;border-color:#3b82f6}
 
 /* LOADING */
 .loading{
@@ -100,6 +112,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;color:#1f2937;mi
   line-height:1.3;
 }
 .card:hover{filter:brightness(.93);transform:translateX(1px)}
+.card.atrasado{background:#fee2e2!important;border-left-color:#dc2626!important;color:#991b1b!important}
 .card-emoji{flex-shrink:0}
 .card-nome{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
 .card-status{flex-shrink:0;font-size:10px}
@@ -234,6 +247,14 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;color:#1f2937;mi
 <!-- LEGENDA CLIENTES -->
 <div class="legenda" id="legenda"></div>
 
+<!-- FILTROS -->
+<div class="filtros">
+  <button class="btn-filtro ativo" data-f="todos"       onclick="setFiltro('todos')">Todos</button>
+  <button class="btn-filtro"       data-f="semana"      onclick="setFiltro('semana')">Esta semana</button>
+  <button class="btn-filtro"       data-f="atrasados"   onclick="setFiltro('atrasados')">Atrasados</button>
+  <button class="btn-filtro"       data-f="pendentes"   onclick="setFiltro('pendentes')">Pendentes</button>
+</div>
+
 <!-- LOADING -->
 <div class="loading" id="loading">
   <div class="spinner"></div>
@@ -262,6 +283,10 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;color:#1f2937;mi
         <tr><td>Dados</td><td id="dDados"></td></tr>
         <tr id="drDrive"><td>Drive</td><td id="dDrive"></td></tr>
         <tr id="drObs" style="display:none"><td>Obs</td><td id="dObs"></td></tr>
+        <tr id="drPrazos" style="display:none">
+          <td style="vertical-align:top;padding-top:8px">Prazos</td>
+          <td id="dPrazos" style="padding-top:8px"></td>
+        </tr>
       </table>
       <div id="detActions" style="margin-top:18px;padding-top:14px;border-top:1px solid #f3f4f6;display:flex;gap:8px;justify-content:flex-end">
         <button onclick="editarCampanha()" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px">Editar</button>
@@ -309,7 +334,24 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;color:#1f2937;mi
         </div>
         <div class="fg">
           <label>Data planejada *</label>
-          <input type="date" id="fData" required style="max-width:220px">
+          <input type="date" id="fData" required style="max-width:220px" oninput="autoPreencherPrazos()">
+        </div>
+        <div style="background:#f8f9fa;border-radius:8px;padding:12px 14px;margin-bottom:14px">
+          <p style="font-size:12px;font-weight:600;color:#374151;margin-bottom:10px">Prazos de entrega <span style="color:#9ca3af;font-weight:400">(auto-preenchidos, editáveis)</span></p>
+          <div class="form-row">
+            <div class="fg" style="margin-bottom:0">
+              <label style="font-size:12px">Copy</label>
+              <input type="date" id="fPrazoCopy" style="font-size:13px">
+            </div>
+            <div class="fg" style="margin-bottom:0" id="fgPrazoArte">
+              <label style="font-size:12px">Arte</label>
+              <input type="date" id="fPrazoArte" style="font-size:13px">
+            </div>
+          </div>
+          <div class="fg" style="margin-top:10px;margin-bottom:0" id="fgPrazoDados">
+            <label style="font-size:12px">Dados</label>
+            <input type="date" id="fPrazoDados" style="max-width:220px;font-size:13px">
+          </div>
         </div>
         <div class="fg">
           <label>Campanha / Assunto *</label>
@@ -350,10 +392,11 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 
 // ── ESTADO ──
 let anoAtual, mesAtual, clienteAtual = '';
-let listaClientes = [], campanhas = [];
+let listaClientes = [], campanhas = [], campanhasFiltradas = [];
+let filtroAtual = 'todos';
 let detalheRowNum = null;
 let campanhaDetalhe = null;
-let editando = null; // rowNum sendo editado, ou null para nova campanha
+let editando = null;
 let coresMap = {}; // { slug: [bg, borda, texto] }
 
 // ── INIT ──
@@ -381,7 +424,6 @@ function render(d) {
   anoAtual      = d.ano;
   mesAtual      = d.mes;
 
-  // mapa de cores
   coresMap = {};
   listaClientes.forEach(function(c,i){ coresMap[c.slug.toLowerCase()] = PALETA[i % PALETA.length]; });
 
@@ -389,8 +431,34 @@ function render(d) {
 
   renderLegenda();
   renderFiltro();
-  renderCal();
+  aplicarFiltro();
   setLoading(false);
+}
+
+// ── FILTROS ──
+function setFiltro(f) {
+  filtroAtual = f;
+  document.querySelectorAll('.btn-filtro').forEach(function(b){
+    b.classList.toggle('ativo', b.dataset.f === f);
+  });
+  aplicarFiltro();
+}
+
+function aplicarFiltro() {
+  var hoje = new Date(); hoje.setHours(0,0,0,0);
+  var semanaFim = new Date(hoje); semanaFim.setDate(hoje.getDate() + 7);
+
+  campanhasFiltradas = campanhas.filter(function(c) {
+    var pronto = c.status.indexOf('Pronto') >= 0;
+    var dataCamp = new Date(anoAtual, mesAtual-1, c.dia);
+
+    if (filtroAtual === 'todos')     return true;
+    if (filtroAtual === 'pendentes') return !pronto;
+    if (filtroAtual === 'atrasados') return !pronto && dataCamp < hoje;
+    if (filtroAtual === 'semana')    return dataCamp >= hoje && dataCamp <= semanaFim;
+    return true;
+  });
+  renderCal();
 }
 
 function renderLegenda() {
@@ -414,9 +482,11 @@ function renderCal() {
   var totalDias   = new Date(anoAtual, mesAtual, 0).getDate();
   var dow         = primeiroDia.getDay();
 
-  // agrupa por dia
+  var hojeMs = new Date(); hojeMs.setHours(0,0,0,0);
+
+  // agrupa por dia (usando campanhas filtradas)
   var porDia = {};
-  campanhas.forEach(function(c){ (porDia[c.dia] = porDia[c.dia]||[]).push(c); });
+  campanhasFiltradas.forEach(function(c){ (porDia[c.dia] = porDia[c.dia]||[]).push(c); });
 
   var html = '';
   var dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
@@ -439,9 +509,14 @@ function renderCal() {
       var idx = campanhas.indexOf(c);
       var cor = coresMap[c.cliente.toLowerCase()] || ['#F3F4F6','#9CA3AF','#374151'];
       var em  = EMOJI[c.tipo]||'📌';
-      var ic  = c.status.indexOf('Pronto')>=0?'✅':c.status.indexOf('Bloqueado')>=0?'🔴':c.status.indexOf('andamento')>=0?'🟡':'⏳';
+      var pronto = c.status.indexOf('Pronto')>=0;
+      var ic  = pronto?'✅':c.status.indexOf('Bloqueado')>=0?'🔴':c.status.indexOf('andamento')>=0?'🟡':'⏳';
       var nm  = c.campanha.length>21 ? c.campanha.slice(0,19)+'…' : c.campanha;
-      html += '<div class="card" style="background:'+cor[0]+';border-left:3px solid '+cor[1]+';color:'+cor[2]+'" onclick="verDetalhe(event,'+idx+')">';
+      var dataCamp = new Date(anoAtual, mesAtual-1, c.dia);
+      var atrasado = !pronto && dataCamp < hojeMs;
+      var cardCls  = 'card' + (atrasado ? ' atrasado' : '');
+      var style    = atrasado ? '' : 'background:'+cor[0]+';border-left:3px solid '+cor[1]+';color:'+cor[2];
+      html += '<div class="'+cardCls+'" style="'+style+'" onclick="verDetalhe(event,'+idx+')">';
       html += '<span class="card-emoji">'+em+'</span><span class="card-nome">'+nm+'</span><span class="card-status">'+ic+'</span></div>';
     });
     if (camps.length>MAX) {
@@ -508,6 +583,26 @@ function verDetalhe(event, idx) {
     trObs.style.display = 'none';
   }
 
+  // Prazos com contagem regressiva
+  var trPrazos = document.getElementById('drPrazos');
+  var hoje2 = new Date(); hoje2.setHours(0,0,0,0);
+  function prazoHtml(label, prazoStr, status) {
+    if (!prazoStr) return '';
+    var parts = prazoStr.split('/');
+    var dt = new Date(parts[2], parts[1]-1, parts[0]);
+    var diff = Math.round((dt - hoje2) / 86400000);
+    var cor = status === 'Entregue' ? '#16a34a' : diff < 0 ? '#dc2626' : diff <= 2 ? '#d97706' : '#374151';
+    var txt = status === 'Entregue' ? 'entregue' : diff < 0 ? Math.abs(diff)+'d atrasado' : diff === 0 ? 'hoje' : diff+'d restantes';
+    return '<div style="font-size:12px;margin-bottom:3px"><span style="color:#888">'+label+':</span> <span style="color:'+cor+';font-weight:600">'+prazoStr+' ('+txt+')</span></div>';
+  }
+  var prazosHtml = prazoHtml('Copy', c.prazoCopy, c.copy) + prazoHtml('Arte', c.prazoArte, c.arte) + prazoHtml('Dados', c.prazoDados, c.dados);
+  if (prazosHtml) {
+    trPrazos.style.display = '';
+    document.getElementById('dPrazos').innerHTML = prazosHtml;
+  } else {
+    trPrazos.style.display = 'none';
+  }
+
   document.getElementById('overlayDet').classList.add('open');
 }
 
@@ -548,6 +643,12 @@ function abrirForm(dataISO, camp) {
 
   var tipo = document.getElementById('fTipo').value;
   document.getElementById('fgBase').style.display = tipo === 'email' ? '' : 'none';
+  document.getElementById('fgPrazoDados').style.display = tipo === 'email' ? '' : 'none';
+
+  if (camp && camp.prazoCopy)  document.getElementById('fPrazoCopy').value  = isoFromBR(camp.prazoCopy);
+  if (camp && camp.prazoArte)  document.getElementById('fPrazoArte').value  = isoFromBR(camp.prazoArte);
+  if (camp && camp.prazoDados) document.getElementById('fPrazoDados').value = isoFromBR(camp.prazoDados);
+  if (!camp) autoPreencherPrazos();
 
   var header = document.querySelector('.modal-form-header');
   header.textContent = camp ? 'Editar Campanha' : 'Nova Campanha';
@@ -574,6 +675,9 @@ function submeter(event) {
   var campanha      = document.getElementById('fCampanha').value.trim();
   var obs           = document.getElementById('fObs').value.trim();
   var instrucaoBase = document.getElementById('fBase').value.trim();
+  var prazoCopy     = document.getElementById('fPrazoCopy').value;
+  var prazoArte     = document.getElementById('fPrazoArte').value;
+  var prazoDados    = document.getElementById('fPrazoDados').value;
 
   if (!cliente){ toast('Selecione o cliente.','erro'); return; }
   if (!campanha){ toast('Informe o nome da campanha.','erro'); return; }
@@ -606,12 +710,12 @@ function submeter(event) {
     google.script.run
       .withSuccessHandler(onSucesso)
       .withFailureHandler(onErro)
-      .editarCampanhaPortal({rowNum:editando,tipo:tipo,data:data,campanha:campanha,obs:obs,instrucaoBase:instrucaoBase});
+      .editarCampanhaPortal({rowNum:editando,tipo:tipo,data:data,campanha:campanha,obs:obs,instrucaoBase:instrucaoBase,prazoCopy:prazoCopy,prazoArte:prazoArte,prazoDados:prazoDados});
   } else {
     google.script.run
       .withSuccessHandler(onSucesso)
       .withFailureHandler(onErro)
-      .criarCampanhaPortal({cliente:cliente,tipo:tipo,data:data,campanha:campanha,obs:obs,instrucaoBase:instrucaoBase});
+      .criarCampanhaPortal({cliente:cliente,tipo:tipo,data:data,campanha:campanha,obs:obs,instrucaoBase:instrucaoBase,prazoCopy:prazoCopy,prazoArte:prazoArte,prazoDados:prazoDados});
   }
 }
 
@@ -680,9 +784,31 @@ function toast(msg, tipo) {
 
 function pad(n){ return String(n).padStart(2,'0'); }
 
-// Mostra campo de base só para email
+function isoFromBR(br) {
+  // "dd/MM/yyyy" → "yyyy-MM-dd"
+  if (!br || br.indexOf('/') < 0) return '';
+  var p = br.split('/');
+  return p[2] + '-' + p[1] + '-' + p[0];
+}
+
+function autoPreencherPrazos() {
+  var data = document.getElementById('fData').value;
+  if (!data) return;
+  var dt = new Date(data + 'T12:00:00');
+  function addDias(d, n) {
+    var r = new Date(d); r.setDate(r.getDate() + n);
+    return r.toISOString().slice(0,10);
+  }
+  document.getElementById('fPrazoCopy').value  = addDias(dt, -7);
+  document.getElementById('fPrazoArte').value  = addDias(dt, -3);
+  document.getElementById('fPrazoDados').value = addDias(dt, -7);
+}
+
+// Mostra campo de base e prazo dados só para email
 document.getElementById('fTipo').addEventListener('change', function(){
-  document.getElementById('fgBase').style.display = this.value === 'email' ? '' : 'none';
+  var isEmail = this.value === 'email';
+  document.getElementById('fgBase').style.display      = isEmail ? '' : 'none';
+  document.getElementById('fgPrazoDados').style.display = isEmail ? '' : 'none';
 });
 </script>
 </body>

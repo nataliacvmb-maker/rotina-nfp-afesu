@@ -79,20 +79,29 @@ function getCampanhasDoMes(sheet, clienteSlug, ano, mes) {
 
     if (status === 'Cancelada') continue;
 
+    const fmtPrazo = function(v) {
+      if (!v || !(v instanceof Date) || isNaN(v.getTime())) return '';
+      return Utilities.formatDate(v, Session.getScriptTimeZone(), 'dd/MM/yyyy');
+    };
+
     result.push({
-      rowNum:    i + 1,
-      dia:       dt.getDate(),
-      dataStr:   Utilities.formatDate(dt, Session.getScriptTimeZone(), 'dd/MM/yyyy'),
-      cliente:   cliente.toString(),
-      tipo:      tipo,
-      campanha:  linha[COL.CAMPANHA - 1] || '',
-      copy:      linha[COL.COPY - 1] || '⏳',
-      arte:      linha[COL.ARTE - 1] || '⏳',
-      dados:     linha[COL.DADOS - 1] || '⏳',
-      status:    status,
-      linkDrive: linha[COL.LINK_DRIVE - 1] || '',
-      linkHtml:  linha[COL.LINK_HTML - 1] || '',
-      obs:       linha[COL.OBS - 1] || '',
+      rowNum:     i + 1,
+      dia:        dt.getDate(),
+      dataStr:    Utilities.formatDate(dt, Session.getScriptTimeZone(), 'dd/MM/yyyy'),
+      dataISO:    Utilities.formatDate(dt, Session.getScriptTimeZone(), 'yyyy-MM-dd'),
+      cliente:    cliente.toString(),
+      tipo:       tipo,
+      campanha:   linha[COL.CAMPANHA - 1] || '',
+      copy:       linha[COL.COPY - 1] || 'Pendente',
+      arte:       linha[COL.ARTE - 1] || 'Pendente',
+      dados:      linha[COL.DADOS - 1] || 'Pendente',
+      status:     status,
+      linkDrive:  linha[COL.LINK_DRIVE - 1] || '',
+      linkHtml:   linha[COL.LINK_HTML - 1] || '',
+      obs:        linha[COL.OBS - 1] || '',
+      prazoCopy:  fmtPrazo(linha[COL.PRAZO_COPY  - 1]),
+      prazoArte:  fmtPrazo(linha[COL.PRAZO_ARTE  - 1]),
+      prazoDados: fmtPrazo(linha[COL.PRAZO_DADOS - 1]),
     });
   }
 
