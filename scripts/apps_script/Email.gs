@@ -3,7 +3,7 @@
 // ============================================================
 
 function htmlBriefing(d) {
-  const tipoEmoji = (TIPOS_CONFIG[d.tipo] || TIPOS_CONFIG['outros']).emoji;
+  const tipoEmoji = (TIPOS_CONFIG[d.tipo] || TIPOS_CONFIG['outros']).label;
   const linkDriveHtml = d.linkDrive
     ? `<a href="${d.linkDrive}" style="color:#2980b9">📁 Abrir pasta no Drive</a>`
     : '—';

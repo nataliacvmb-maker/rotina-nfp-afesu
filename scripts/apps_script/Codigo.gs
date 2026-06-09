@@ -6,9 +6,9 @@ const SHEET_CAMPANHAS = 'CAMPANHAS';
 const SHEET_CLIENTES  = 'CLIENTES';
 const SHEET_LINKS     = 'LINKS CALENDÁRIOS';
 
-const STATUS_PENDENTE = '⏳';
-const STATUS_OK       = '✅';
-const STATUS_BLOQUEIO = '❌';
+const STATUS_PENDENTE = 'Pendente';
+const STATUS_OK       = 'Entregue';
+const STATUS_BLOQUEIO = 'Bloqueado';
 
 // Colunas da aba CAMPANHAS (índice 1-based)
 const COL = {
@@ -27,11 +27,11 @@ const COL = {
 };
 
 const TIPOS_CONFIG = {
-  'email':     { cor: '#FFB3B3', texto: '#8B0000', emoji: '📧' },
-  'instagram': { cor: '#B3C6FF', texto: '#1A3399', emoji: '📸' },
-  'whatsapp':  { cor: '#B3F0C8', texto: '#145A32', emoji: '💬' },
-  'sms':       { cor: '#FFE8A3', texto: '#7D5500', emoji: '📱' },
-  'outros':    { cor: '#E0E0E0', texto: '#333333', emoji: '📌' },
+  'email':     { cor: '#FFB3B3', texto: '#8B0000', label: 'Email' },
+  'instagram': { cor: '#B3C6FF', texto: '#1A3399', label: 'Instagram' },
+  'whatsapp':  { cor: '#B3F0C8', texto: '#145A32', label: 'WhatsApp' },
+  'sms':       { cor: '#FFE8A3', texto: '#7D5500', label: 'SMS' },
+  'outros':    { cor: '#E0E0E0', texto: '#333333', label: 'Outros' },
 };
 
 
@@ -91,14 +91,14 @@ function atualizarStatusGeral(sheet, row) {
 
   let status;
   if (copy === STATUS_OK && arte === STATUS_OK && dados === STATUS_OK) {
-    status = '🟢 Pronto para disparo';
+    status = 'Pronto para disparo';
     notificarOperadorPronto(row);
   } else if ([copy, arte, dados].includes(STATUS_BLOQUEIO)) {
-    status = '🔴 Bloqueado';
+    status = 'Bloqueado';
   } else if ([copy, arte, dados].some(s => s === STATUS_OK)) {
-    status = '🟡 Em andamento';
+    status = 'Em andamento';
   } else {
-    status = '🔴 Aguardando insumos';
+    status = 'Aguardando insumos';
   }
 
   sheet.getRange(row, COL.STATUS).setValue(status);
@@ -221,22 +221,45 @@ function criarCampanhaPortal(dados) {
     const sheet = ss.getSheetByName(SHEET_CAMPANHAS);
 
     const dt     = new Date(dados.data + 'T12:00:00');
-    const mesAno = `${String(dt.getMonth() + 1).padStart(2,'0')}/${dt.getFullYear()}`;
+    const mesAno = String(dt.getMonth() + 1).padStart(2,'0') + '/' + dt.getFullYear();
 
-    sheet.appendRow([
+    // Cria pasta no Drive automaticamente se não foi fornecida
+    const linkDrive = dados.linkDrive || criarPastaCampanha(dados.cliente, dados.campanha, mesAno);
+
+    // Reserva a próxima linha e define formatos ANTES de gravar
+    const newRow = sheet.getLastRow() + 1;
+    sheet.getRange(newRow, COL.MES_ANO).setNumberFormat('@');       // força texto
+    sheet.getRange(newRow, COL.DATA).setNumberFormat('dd/MM/yyyy'); // formata data
+
+    sheet.getRange(newRow, 1, 1, 12).setValues([[
       dados.cliente, dados.tipo, mesAno, dt,
       dados.campanha, STATUS_PENDENTE, STATUS_PENDENTE, STATUS_PENDENTE,
-      '🔴 Aguardando insumos', dados.linkDrive || '', '', dados.obs || '',
-    ]);
-
-    const newRow = sheet.getLastRow();
-    sheet.getRange(newRow, COL.DATA).setNumberFormat('dd/MM/yyyy');
+      'Aguardando insumos', linkDrive, '', dados.obs || '',
+    ]]);
 
     try { enviarBriefing(newRow); } catch(e) { console.error('Briefing erro:', e); }
 
-    return { ok: true, row: newRow };
+    return { ok: true, row: newRow, linkDrive: linkDrive };
   } catch(e) {
     return { ok: false, erro: e.message };
+  }
+}
+
+function criarPastaCampanha(cliente, campanha, mesAno) {
+  try {
+    const nomeRaiz = 'Campanhas NFP';
+    const iterRaiz = DriveApp.searchFolders('title = "' + nomeRaiz + '" and trashed = false');
+    const pastaRaiz = iterRaiz.hasNext() ? iterRaiz.next() : DriveApp.createFolder(nomeRaiz);
+
+    const iterCliente = pastaRaiz.searchFolders('title = "' + cliente + '" and trashed = false');
+    const pastaCliente = iterCliente.hasNext() ? iterCliente.next() : pastaRaiz.createFolder(cliente);
+
+    const nomePasta = campanha + ' — ' + mesAno.replace('/', '-');
+    const pasta = pastaCliente.createFolder(nomePasta);
+    return pasta.getUrl();
+  } catch(e) {
+    console.error('Erro ao criar pasta Drive:', e);
+    return '';
   }
 }
 

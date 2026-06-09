@@ -421,7 +421,7 @@ function renderCal() {
       var idx = campanhas.indexOf(c);
       var cor = coresMap[c.cliente.toLowerCase()] || ['#F3F4F6','#9CA3AF','#374151'];
       var em  = EMOJI[c.tipo]||'📌';
-      var ic  = c.status.indexOf('Pronto')>=0?'✅':c.status.indexOf('Bloqueado')>=0?'🔴':'⏳';
+      var ic  = c.status.indexOf('Pronto')>=0?'✅':c.status.indexOf('Bloqueado')>=0?'🔴':c.status.indexOf('andamento')>=0?'🟡':'⏳';
       var nm  = c.campanha.length>21 ? c.campanha.slice(0,19)+'…' : c.campanha;
       html += '<div class="card" style="background:'+cor[0]+';border-left:3px solid '+cor[1]+';color:'+cor[2]+'" onclick="verDetalhe(event,'+idx+')">';
       html += '<span class="card-emoji">'+em+'</span><span class="card-nome">'+nm+'</span><span class="card-status">'+ic+'</span></div>';
