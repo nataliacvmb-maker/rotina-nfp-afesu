@@ -3,68 +3,72 @@
 // ============================================================
 
 function htmlBriefing(d) {
-  const tipoEmoji = (TIPOS_CONFIG[d.tipo] || TIPOS_CONFIG['outros']).label;
+  const tipoLabel = (TIPOS_CONFIG[d.tipo] || TIPOS_CONFIG['outros']).label;
+
   const linkDriveHtml = d.linkDrive
-    ? `<a href="${d.linkDrive}" style="color:#2980b9">📁 Abrir pasta no Drive</a>`
-    : '—';
-  const obsHtml = d.obs ? `<p style="background:#fff9e6;border-left:4px solid #f1c40f;padding:10px 14px;margin-top:12px;border-radius:4px;color:#555"><strong>📝 Obs:</strong> ${d.obs}</p>` : '';
+    ? '<a href="' + d.linkDrive + '" style="color:#2563eb;font-weight:600">Abrir pasta no Drive &rarr;</a>'
+    : '&mdash;';
 
-  return `<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif">
-<div style="max-width:580px;margin:32px auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)">
+  const obsHtml = d.obs
+    ? '<div style="background:#fff9e6;border-left:4px solid #f1c40f;padding:10px 14px;margin-top:12px;border-radius:4px;color:#555;font-size:14px"><strong>Obs:</strong> ' + d.obs + '</div>'
+    : '';
 
-  <!-- Header -->
-  <div style="background:#2C3E50;padding:24px 32px">
-    <p style="margin:0;color:#95a5a6;font-size:12px;text-transform:uppercase;letter-spacing:1px">Sistema de Campanhas NFP</p>
-    <h1 style="margin:8px 0 0;color:#fff;font-size:22px">Novo briefing de campanha</h1>
-  </div>
+  const baseHtml = d.instrucaoBase
+    ? '<div style="background:#e8f4fd;border-left:4px solid #2563eb;padding:12px 16px;border-radius:4px;margin-top:14px;font-size:14px;color:#1e3a5f"><strong>Base de dados:</strong> ' + d.instrucaoBase + '</div>'
+    : '';
 
-  <!-- Corpo -->
-  <div style="padding:28px 32px">
-    <p style="margin:0 0 6px;color:#555;font-size:15px">Olá, <strong>${d.nomeEquipe}</strong>!</p>
-    <p style="margin:0 0 20px;color:#555;font-size:15px">
-      Uma nova campanha foi cadastrada e precisa da sua entrega:
-    </p>
+  const notaFinalHtml = d.linkDrive
+    ? '<div style="background:#fef9ec;border:1px solid #fde68a;padding:12px 16px;border-radius:6px;margin-top:18px;font-size:13px;color:#78350f">'
+      + '<strong>Importante:</strong> salve na pasta acima <strong>somente a versao final</strong>. '
+      + 'O sistema fara a importacao automatica no RD Station a partir dos arquivos encontrados nessa pasta.'
+      + '</div>'
+    : '';
 
-    <!-- Card da campanha -->
-    <div style="background:#f8f9fa;border-radius:8px;padding:20px 24px;margin-bottom:20px">
-      <table style="width:100%;border-collapse:collapse;font-size:14px;color:#444">
-        <tr><td style="padding:6px 0;width:130px;color:#888">Cliente</td><td style="font-weight:bold;color:#2c3e50">${d.cliente}</td></tr>
-        <tr><td style="padding:6px 0;color:#888">Campanha</td><td style="font-weight:bold">${d.campanha}</td></tr>
-        <tr><td style="padding:6px 0;color:#888">Tipo</td><td>${tipoEmoji} ${d.tipo}</td></tr>
-        <tr><td style="padding:6px 0;color:#888">Mês</td><td>${d.mesAno}</td></tr>
-        <tr><td style="padding:6px 0;color:#888">Data planejada</td><td><strong>${d.dataFormatada}</strong></td></tr>
-        <tr><td style="padding:6px 0;color:#888">Pasta Drive</td><td>${linkDriveHtml}</td></tr>
-      </table>
-    </div>
+  return '<!DOCTYPE html>'
+    + '<html><head><meta charset="UTF-8">'
+    + '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"></head>'
+    + '<body style="margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif">'
+    + '<div style="max-width:600px;margin:32px auto;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)">'
 
-    <!-- Tarefa -->
-    <div style="background:#eaf4fb;border-left:4px solid #2980b9;padding:12px 16px;border-radius:4px;margin-bottom:24px">
-      <p style="margin:0;color:#1a5276;font-size:14px"><strong>Sua tarefa:</strong> ${d.tarefa}</p>
-    </div>
+    + '<div style="background:#1e293b;padding:24px 32px">'
+    + '<p style="margin:0;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:1px">Sistema Calendario Mkt</p>'
+    + '<h1 style="margin:8px 0 0;color:#fff;font-size:21px">Novo briefing de campanha</h1>'
+    + '</div>'
 
-    ${obsHtml}
+    + '<div style="padding:28px 32px">'
+    + '<p style="margin:0 0 6px;color:#555;font-size:15px">Ola, <strong>' + d.nomeEquipe + '</strong>!</p>'
+    + '<p style="margin:0 0 20px;color:#555;font-size:15px">Uma nova campanha foi cadastrada e precisa da sua entrega:</p>'
 
-    <!-- Botão confirmar -->
-    <div style="text-align:center;margin-top:28px">
-      <p style="color:#555;font-size:13px;margin-bottom:12px">Quando sua entrega estiver na pasta do Drive, clique abaixo:</p>
-      <a href="${d.linkConfirmar}"
-         style="display:inline-block;background:#27ae60;color:#fff;padding:14px 36px;border-radius:6px;text-decoration:none;font-size:16px;font-weight:bold;letter-spacing:.3px">
-        ✅ Confirmar entrega
-      </a>
-      <p style="color:#aaa;font-size:11px;margin-top:10px">Este link confirma apenas a sua entrega (${d.nomeEquipe}).</p>
-    </div>
-  </div>
+    + '<div style="background:#f8f9fa;border-radius:8px;padding:20px 24px;margin-bottom:20px">'
+    + '<table style="width:100%;border-collapse:collapse;font-size:14px;color:#444">'
+    + '<tr><td style="padding:6px 0;width:130px;color:#888;vertical-align:top">Cliente</td><td style="font-weight:bold;color:#1e293b">' + d.cliente + '</td></tr>'
+    + '<tr><td style="padding:6px 0;color:#888;vertical-align:top">Campanha</td><td style="font-weight:bold">' + d.campanha + '</td></tr>'
+    + '<tr><td style="padding:6px 0;color:#888">Tipo</td><td>' + tipoLabel + '</td></tr>'
+    + '<tr><td style="padding:6px 0;color:#888">Mes</td><td>' + d.mesAno + '</td></tr>'
+    + '<tr><td style="padding:6px 0;color:#888">Data</td><td><strong>' + d.dataFormatada + '</strong></td></tr>'
+    + '<tr><td style="padding:6px 0;color:#888;vertical-align:top">Pasta</td><td>' + linkDriveHtml + '</td></tr>'
+    + '</table>'
+    + '</div>'
 
-  <!-- Footer -->
-  <div style="background:#f8f9fa;padding:14px 32px;border-top:1px solid #eee;text-align:center">
-    <p style="margin:0;color:#aaa;font-size:11px">Sistema automatizado — Time Captação NFP</p>
-  </div>
-</div>
-</body>
-</html>`;
+    + '<div style="background:#eaf4fb;border-left:4px solid #2980b9;padding:12px 16px;border-radius:4px;margin-bottom:16px">'
+    + '<p style="margin:0;color:#1a5276;font-size:14px"><strong>Sua tarefa:</strong> ' + d.tarefa + '</p>'
+    + '</div>'
+
+    + baseHtml
+    + obsHtml
+    + notaFinalHtml
+
+    + '<div style="text-align:center;margin-top:28px">'
+    + '<p style="color:#555;font-size:13px;margin-bottom:12px">Quando sua entrega estiver na pasta do Drive, clique abaixo para confirmar:</p>'
+    + '<a href="' + d.linkConfirmar + '" style="display:inline-block;background:#16a34a;color:#fff;padding:14px 36px;border-radius:6px;text-decoration:none;font-size:16px;font-weight:bold">Confirmar entrega</a>'
+    + '<p style="color:#aaa;font-size:11px;margin-top:10px">Este link confirma apenas a entrega do ' + d.nomeEquipe + '.</p>'
+    + '</div>'
+    + '</div>'
+
+    + '<div style="background:#f8f9fa;padding:14px 32px;border-top:1px solid #eee;text-align:center">'
+    + '<p style="margin:0;color:#aaa;font-size:11px">Sistema Calendario Mkt &mdash; Time Captacao NFP</p>'
+    + '</div>'
+    + '</div></body></html>';
 }
 
 

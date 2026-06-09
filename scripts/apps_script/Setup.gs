@@ -94,22 +94,22 @@ function configurarAbaClientes(sheet) {
 
   const headers = [
     'Slug', 'Nome Completo', 'Email Operador',
-    'Email Copy', 'Email Arte', 'Email Dados', 'Email Aprovador'
+    'Email Copy', 'Email Arte', 'Email Dados', 'Email Aprovador',
+    'ID Pasta Email (Drive)', 'ID Pasta Instagram (Drive)'
   ];
   const hrng = sheet.getRange(1, 1, 1, headers.length);
   hrng.setValues([headers]);
   hrng.setBackground('#2C3E50').setFontColor('#FFFFFF').setFontWeight('bold');
 
-  // Exemplos
   const exemplos = [
-    ['afesu',    'AFESU',              'barbara.aquino@timecaptacao.com.br', '', '', '', ''],
-    ['leao',     'Instituto Leão',     '', '', '', '', ''],
-    ['salesians','Salesianos',         '', '', '', '', ''],
-    ['sagrada',  'Sagrada Família',    '', '', '', '', ''],
+    ['afesu',    'AFESU',           'barbara.aquino@timecaptacao.com.br', '', '', '', '', '', ''],
+    ['leao',     'Instituto Leao',  '', '', '', '', '', '', ''],
+    ['salesians','Salesianos',      '', '', '', '', '', '', ''],
+    ['sagrada',  'Sagrada Familia', '', '', '', '', '', '', ''],
   ];
   sheet.getRange(2, 1, exemplos.length, exemplos[0].length).setValues(exemplos);
 
-  const larguras = [110, 200, 240, 230, 230, 230, 230];
+  const larguras = [110, 200, 240, 230, 230, 230, 230, 260, 260];
   larguras.forEach((w, i) => sheet.setColumnWidth(i + 1, w));
   sheet.setFrozenRows(1);
 }

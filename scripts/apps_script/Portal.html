@@ -300,8 +300,12 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;color:#1f2937;mi
           <label>Campanha / Assunto *</label>
           <input type="text" id="fCampanha" placeholder="Ex: Email de boas-vindas março" required>
         </div>
+        <div class="fg" id="fgBase" style="display:none">
+          <label>Base de dados <span class="optional">(instrução ao Time de Dados)</span></label>
+          <input type="text" id="fBase" placeholder="Ex: Doadores ativos 2025, todos os parceiros...">
+        </div>
         <div class="fg">
-          <label>Link Drive <span class="optional">(opcional)</span></label>
+          <label>Link Drive <span class="optional">(deixe vazio para criar automaticamente)</span></label>
           <input type="url" id="fDrive" placeholder="https://drive.google.com/…">
         </div>
         <div class="fg">
@@ -504,8 +508,10 @@ function abrirForm(dataISO) {
   document.getElementById('fCampanha').value = '';
   document.getElementById('fDrive').value    = '';
   document.getElementById('fObs').value      = '';
+  document.getElementById('fBase').value     = '';
   document.getElementById('fTipo').value     = 'email';
   document.getElementById('fCliente').value  = '';
+  document.getElementById('fgBase').style.display = ''; // email é default
   var btn = document.getElementById('btnSubmit');
   btn.disabled = false;
   btn.textContent = 'Criar Campanha';
@@ -520,8 +526,9 @@ function submeter(event) {
   var tipo     = document.getElementById('fTipo').value;
   var data     = document.getElementById('fData').value;
   var campanha = document.getElementById('fCampanha').value.trim();
-  var linkDrive= document.getElementById('fDrive').value.trim();
-  var obs      = document.getElementById('fObs').value.trim();
+  var linkDrive     = document.getElementById('fDrive').value.trim();
+  var obs           = document.getElementById('fObs').value.trim();
+  var instrucaoBase = document.getElementById('fBase').value.trim();
 
   if (!cliente){ toast('Selecione o cliente.','erro'); return; }
   if (!campanha){ toast('Informe o nome da campanha.','erro'); return; }
@@ -547,7 +554,7 @@ function submeter(event) {
       btn.textContent = 'Criar Campanha';
       toast('Erro ao salvar: '+e.message,'erro');
     })
-    .criarCampanhaPortal({cliente:cliente,tipo:tipo,data:data,campanha:campanha,linkDrive:linkDrive,obs:obs});
+    .criarCampanhaPortal({cliente:cliente,tipo:tipo,data:data,campanha:campanha,linkDrive:linkDrive,obs:obs,instrucaoBase:instrucaoBase});
 }
 
 // ── UTILITÁRIOS ──
@@ -575,6 +582,11 @@ function toast(msg, tipo) {
 }
 
 function pad(n){ return String(n).padStart(2,'0'); }
+
+// Mostra campo de base só para email
+document.getElementById('fTipo').addEventListener('change', function(){
+  document.getElementById('fgBase').style.display = this.value === 'email' ? '' : 'none';
+});
 </script>
 </body>
 </html>

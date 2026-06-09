@@ -109,7 +109,7 @@ function atualizarStatusGeral(sheet, row) {
 // ENVIA EMAIL DE BRIEFING PARA COPY + ARTE + DADOS
 // ============================================================
 
-function enviarBriefing(row) {
+function enviarBriefing(row, pastaLinks, instrucaoBase) {
   const ss    = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEET_CAMPANHAS);
   const dados = sheet.getRange(row, 1, 1, COL.OBS).getValues()[0];
@@ -128,36 +128,61 @@ function enviarBriefing(row) {
     return;
   }
 
-  const scriptUrl = ScriptApp.getService().getUrl();
+  const scriptUrl    = ScriptApp.getService().getUrl();
   const dataFormatada = data ? Utilities.formatDate(new Date(data), 'America/Sao_Paulo', 'dd/MM/yyyy') : '—';
+  const tipoNorm     = (tipo || '').toString().toLowerCase();
 
-  const equipes = [
-    { campo: 'copy',  email: infoCliente.email_copy,  nome: 'Time de Copy',  tarefa: 'Redação do roteiro (texto + assunto + CTA)' },
-    { campo: 'arte',  email: infoCliente.email_arte,  nome: 'Time de Arte',  tarefa: 'Criação das imagens (logo, header, campanha, final)' },
-    { campo: 'dados', email: infoCliente.email_dados, nome: 'Time de Dados', tarefa: 'Preparação da base de emails (.xlsx)' },
-  ];
+  // Define equipes e subpastas por tipo
+  const equipes = [];
+  if (tipoNorm === 'email') {
+    equipes.push({ campo: 'copy',  email: infoCliente.email_copy,  nome: 'Time de Copy',
+      tarefa: 'Redação do roteiro, assunto e CTA do email.',
+      linkPasta: pastaLinks ? pastaLinks.copy : linkDrive });
+    equipes.push({ campo: 'arte',  email: infoCliente.email_arte,  nome: 'Time de Arte',
+      tarefa: 'Criação dos banners (header, corpo e rodapé).',
+      linkPasta: pastaLinks ? pastaLinks.arte : linkDrive });
+    equipes.push({ campo: 'dados', email: infoCliente.email_dados, nome: 'Time de Dados',
+      tarefa: 'Preparação e entrega da base de contatos (.xlsx).',
+      linkPasta: pastaLinks ? pastaLinks.base : linkDrive,
+      instrucaoBase: instrucaoBase || '' });
+  } else if (tipoNorm === 'instagram') {
+    equipes.push({ campo: 'copy',  email: infoCliente.email_copy,  nome: 'Time de Copy',
+      tarefa: 'Redação da legenda, hashtags e CTA do post.',
+      linkPasta: pastaLinks ? pastaLinks.arte : linkDrive });
+    equipes.push({ campo: 'arte',  email: infoCliente.email_arte,  nome: 'Time de Arte',
+      tarefa: 'Criação das artes (feed e/ou stories).',
+      linkPasta: pastaLinks ? pastaLinks.arte : linkDrive });
+  } else {
+    equipes.push({ campo: 'copy',  email: infoCliente.email_copy,  nome: 'Time de Copy',
+      tarefa: 'Redação do conteúdo.', linkPasta: linkDrive });
+    equipes.push({ campo: 'arte',  email: infoCliente.email_arte,  nome: 'Time de Arte',
+      tarefa: 'Criação das peças visuais.', linkPasta: linkDrive });
+    equipes.push({ campo: 'dados', email: infoCliente.email_dados, nome: 'Time de Dados',
+      tarefa: 'Preparação da base de contatos.', linkPasta: linkDrive });
+  }
 
   for (const equipe of equipes) {
     if (!equipe.email) continue;
 
-    const linkConfirmar = `${scriptUrl}?action=confirmar&row=${row}&campo=${equipe.campo}&token=${gerarToken(row, equipe.campo)}`;
+    const linkConfirmar = scriptUrl + '?action=confirmar&row=' + row + '&campo=' + equipe.campo + '&token=' + gerarToken(row, equipe.campo);
 
     const html = htmlBriefing({
-      nomeEquipe:      equipe.nome,
-      tarefa:          equipe.tarefa,
-      cliente:         cliente,
-      tipo:            tipo,
-      campanha:        campanha,
-      mesAno:          mesAno,
-      dataFormatada:   dataFormatada,
-      obs:             obs,
-      linkDrive:       linkDrive,
-      linkConfirmar:   linkConfirmar,
+      nomeEquipe:     equipe.nome,
+      tarefa:         equipe.tarefa,
+      cliente:        cliente,
+      tipo:           tipo,
+      campanha:       campanha,
+      mesAno:         mesAno,
+      dataFormatada:  dataFormatada,
+      obs:            obs,
+      linkDrive:      equipe.linkPasta || linkDrive,
+      instrucaoBase:  equipe.instrucaoBase || '',
+      linkConfirmar:  linkConfirmar,
     });
 
-    GmailApp.sendEmail(equipe.email, `[${cliente}] Novo disparo: ${campanha} — ${mesAno}`, '', {
+    GmailApp.sendEmail(equipe.email, '[' + cliente + '] Novo briefing: ' + campanha + ' — ' + mesAno, '', {
       htmlBody: html,
-      name: 'Sistema de Campanhas NFP',
+      name: 'Sistema Calendario Mkt',
     });
   }
 }
@@ -220,24 +245,38 @@ function criarCampanhaPortal(dados) {
     const ss    = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(SHEET_CAMPANHAS);
 
-    const dt     = new Date(dados.data + 'T12:00:00');
-    const mesAno = String(dt.getMonth() + 1).padStart(2,'0') + '/' + dt.getFullYear();
+    const dt      = new Date(dados.data + 'T12:00:00');
+    const mesAno  = String(dt.getMonth() + 1).padStart(2,'0') + '/' + dt.getFullYear();
+    const tipoNorm = (dados.tipo || '').toLowerCase();
 
-    // Cria pasta no Drive automaticamente se não foi fornecida
-    const linkDrive = dados.linkDrive || criarPastaCampanha(dados.cliente, dados.campanha, mesAno);
+    const infoCliente = getInfoCliente(dados.cliente);
 
-    // Reserva a próxima linha e define formatos ANTES de gravar
+    // Cria estrutura de pastas no Drive
+    let pastaLinks = null;
+    let linkDrive  = dados.linkDrive || '';
+    if (!linkDrive) {
+      if (tipoNorm === 'email') {
+        pastaLinks = criarEstruturaEmail(infoCliente, dados.campanha, mesAno);
+      } else if (tipoNorm === 'instagram') {
+        pastaLinks = criarEstruturaInstagram(infoCliente, dados.campanha, mesAno);
+      }
+      linkDrive = pastaLinks ? pastaLinks.disparo : '';
+    }
+
+    // Reserva linha e define formatos ANTES de gravar
     const newRow = sheet.getLastRow() + 1;
-    sheet.getRange(newRow, COL.MES_ANO).setNumberFormat('@');       // força texto
-    sheet.getRange(newRow, COL.DATA).setNumberFormat('dd/MM/yyyy'); // formata data
+    sheet.getRange(newRow, COL.MES_ANO).setNumberFormat('@');
+    sheet.getRange(newRow, COL.DATA).setNumberFormat('dd/MM/yyyy');
+
+    const obs = [dados.obs || '', dados.instrucaoBase ? 'Base: ' + dados.instrucaoBase : ''].filter(Boolean).join(' | ');
 
     sheet.getRange(newRow, 1, 1, 12).setValues([[
       dados.cliente, dados.tipo, mesAno, dt,
       dados.campanha, STATUS_PENDENTE, STATUS_PENDENTE, STATUS_PENDENTE,
-      'Aguardando insumos', linkDrive, '', dados.obs || '',
+      'Aguardando insumos', linkDrive, '', obs,
     ]]);
 
-    try { enviarBriefing(newRow); } catch(e) { console.error('Briefing erro:', e); }
+    try { enviarBriefing(newRow, pastaLinks, dados.instrucaoBase || ''); } catch(e) { console.error('Briefing erro:', e); }
 
     return { ok: true, row: newRow, linkDrive: linkDrive };
   } catch(e) {
@@ -245,21 +284,70 @@ function criarCampanhaPortal(dados) {
   }
 }
 
-function criarPastaCampanha(cliente, campanha, mesAno) {
+
+// ============================================================
+// CRIA ESTRUTURA DE PASTAS NO DRIVE
+// ============================================================
+
+function _abrirPastaBase(folderId, nomeFallback) {
+  if (folderId) {
+    try { return DriveApp.getFolderById(folderId); } catch(e) {}
+  }
+  const iter = DriveApp.searchFolders('title = "' + nomeFallback + '" and trashed = false');
+  return iter.hasNext() ? iter.next() : DriveApp.createFolder(nomeFallback);
+}
+
+function _contarSubpastas(pasta) {
+  const iter = pasta.getFolders();
+  let c = 0;
+  while (iter.hasNext()) { iter.next(); c++; }
+  return c;
+}
+
+function _obterOuCriarSubpasta(pai, nome) {
+  const iter = pai.searchFolders('title = "' + nome + '" and trashed = false');
+  return iter.hasNext() ? iter.next() : pai.createFolder(nome);
+}
+
+function criarEstruturaEmail(infoCliente, campanha, mesAno) {
   try {
-    const nomeRaiz = 'Campanhas NFP';
-    const iterRaiz = DriveApp.searchFolders('title = "' + nomeRaiz + '" and trashed = false');
-    const pastaRaiz = iterRaiz.hasNext() ? iterRaiz.next() : DriveApp.createFolder(nomeRaiz);
-
-    const iterCliente = pastaRaiz.searchFolders('title = "' + cliente + '" and trashed = false');
-    const pastaCliente = iterCliente.hasNext() ? iterCliente.next() : pastaRaiz.createFolder(cliente);
-
-    const nomePasta = campanha + ' — ' + mesAno.replace('/', '-');
-    const pasta = pastaCliente.createFolder(nomePasta);
-    return pasta.getUrl();
+    const folderId  = infoCliente ? infoCliente.id_pasta_email : '';
+    const nomeMes   = mesAno.replace('/', '-');
+    const pastaBase = _abrirPastaBase(folderId, 'Campanhas NFP');
+    const pastaMes  = _obterOuCriarSubpasta(pastaBase, nomeMes);
+    const numDisp   = _contarSubpastas(pastaMes) + 1;
+    const pastaDisp = pastaMes.createFolder('Disparo ' + numDisp + ' — ' + campanha);
+    const pastaCopy = pastaDisp.createFolder('Copy');
+    const pastaArte = pastaDisp.createFolder('Banner');
+    const pastaBase2= pastaDisp.createFolder('Base');
+    return {
+      disparo: pastaDisp.getUrl(),
+      copy:    pastaCopy.getUrl(),
+      arte:    pastaArte.getUrl(),
+      base:    pastaBase2.getUrl(),
+    };
   } catch(e) {
-    console.error('Erro ao criar pasta Drive:', e);
-    return '';
+    console.error('Erro criarEstruturaEmail:', e);
+    return { disparo: '', copy: '', arte: '', base: '' };
+  }
+}
+
+function criarEstruturaInstagram(infoCliente, campanha, mesAno) {
+  try {
+    const folderId  = infoCliente ? infoCliente.id_pasta_instagram : '';
+    const nomeMes   = mesAno.replace('/', '-');
+    const pastaBase = _abrirPastaBase(folderId, 'Campanhas NFP');
+    const pastaMes  = _obterOuCriarSubpasta(pastaBase, nomeMes);
+    const numPost   = _contarSubpastas(pastaMes) + 1;
+    const pastaPost = pastaMes.createFolder('Post ' + numPost + ' — ' + campanha);
+    const pastaArte = pastaPost.createFolder('Arte');
+    return {
+      disparo: pastaPost.getUrl(),
+      arte:    pastaArte.getUrl(),
+    };
+  } catch(e) {
+    console.error('Erro criarEstruturaInstagram:', e);
+    return { disparo: '', arte: '' };
   }
 }
 
@@ -314,7 +402,7 @@ function notificarOperadorPronto(row) {
     infoCliente.email_operador,
     `[${cliente}] ✅ Insumos prontos — ${campanha}`,
     '',
-    { htmlBody: html, name: 'Sistema de Campanhas NFP' }
+    { htmlBody: html, name: 'Sistema Calendario Mkt' }
   );
 }
 
@@ -331,13 +419,15 @@ function getInfoCliente(clienteSlug) {
   for (let i = 1; i < dados.length; i++) {
     if (dados[i][0].toString().toLowerCase() === clienteSlug.toString().toLowerCase()) {
       return {
-        slug:           dados[i][0],
-        nome:           dados[i][1],
-        email_operador: dados[i][2],
-        email_copy:     dados[i][3],
-        email_arte:     dados[i][4],
-        email_dados:    dados[i][5],
-        email_aprovador:dados[i][6],
+        slug:               dados[i][0],
+        nome:               dados[i][1],
+        email_operador:     dados[i][2],
+        email_copy:         dados[i][3],
+        email_arte:         dados[i][4],
+        email_dados:        dados[i][5],
+        email_aprovador:    dados[i][6],
+        id_pasta_email:     dados[i][7] ? String(dados[i][7]).trim() : '',
+        id_pasta_instagram: dados[i][8] ? String(dados[i][8]).trim() : '',
       };
     }
   }
