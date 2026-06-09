@@ -286,6 +286,31 @@ function criarCampanhaPortal(dados) {
 
 
 // ============================================================
+// DIAGNÓSTICO / AUTORIZAÇÃO
+// ============================================================
+
+function testarDrive() {
+  // Execute esta função UMA VEZ no editor para autorizar acesso ao Drive
+  const ss     = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet  = ss.getSheetByName(SHEET_CLIENTES);
+  const dados  = sheet.getDataRange().getValues();
+  const result = [];
+  for (let i = 1; i < dados.length; i++) {
+    const folderId = dados[i][7] ? String(dados[i][7]).trim() : '';
+    if (!folderId) { result.push(dados[i][0] + ': sem ID'); continue; }
+    try {
+      const f = DriveApp.getFolderById(folderId);
+      result.push(dados[i][0] + ': OK — ' + f.getName());
+    } catch(e) {
+      result.push(dados[i][0] + ': ERRO — ' + e.message);
+    }
+  }
+  Logger.log(result.join('\n'));
+  SpreadsheetApp.getUi().alert('Drive:\n' + result.join('\n'));
+}
+
+
+// ============================================================
 // EDITA CAMPANHA EXISTENTE
 // ============================================================
 
