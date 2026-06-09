@@ -306,7 +306,7 @@ function testarDrive() {
     }
   }
   Logger.log(result.join('\n'));
-  SpreadsheetApp.getUi().alert('Drive:\n' + result.join('\n'));
+  // Ver resultado: clique em "Registro de execução" após rodar
 }
 
 
