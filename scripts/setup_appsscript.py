@@ -54,12 +54,11 @@ def _gs_files(apps_script_dir: Path) -> list:
                 "type": "SERVER_JS",
                 "source": path.read_text(encoding="utf-8"),
             })
-    html_path = apps_script_dir / "Calendario.html"
-    if html_path.exists():
+    for html_file in sorted((apps_script_dir).glob("*.html")):
         files.append({
-            "name": "Calendario",
+            "name": html_file.stem,
             "type": "HTML",
-            "source": html_path.read_text(encoding="utf-8"),
+            "source": html_file.read_text(encoding="utf-8"),
         })
     return files
 
