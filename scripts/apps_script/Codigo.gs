@@ -174,11 +174,70 @@ function doGet(e) {
     return confirmarEntrega(params);
   }
 
-  if (params.action === 'calendario' || params.cliente) {
-    return servirCalendario(params.cliente, params.mes);
-  }
+  return HtmlService.createHtmlOutputFromFile('Portal')
+    .setTitle('Portal de Campanhas NFP')
+    .addMetaTag('viewport', 'width=device-width,initial-scale=1.0')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
 
-  return ContentService.createTextOutput('OK');
+
+// ============================================================
+// PORTAL: funções chamadas pelo cliente via google.script.run
+// ============================================================
+
+function getDadosPortal(clienteSlug, mesParam) {
+  let ano, mes;
+  if (mesParam && /^\d{4}-\d{2}$/.test(mesParam)) {
+    [ano, mes] = mesParam.split('-').map(Number);
+  } else {
+    const hoje = new Date();
+    ano = hoje.getFullYear();
+    mes = hoje.getMonth() + 1;
+  }
+  const ss     = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet  = ss.getSheetByName(SHEET_CAMPANHAS);
+  const clientes  = getListaClientes();
+  const campanhas = getCampanhasDoMes(sheet, clienteSlug || null, ano, mes);
+  return { clientes, campanhas, ano, mes };
+}
+
+function getListaClientes() {
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_CLIENTES);
+  const dados = sheet.getDataRange().getValues();
+  const lista = [];
+  for (let i = 1; i < dados.length; i++) {
+    if (dados[i][0]) lista.push({ slug: String(dados[i][0]), nome: String(dados[i][1] || dados[i][0]) });
+  }
+  return lista;
+}
+
+function criarCampanhaPortal(dados) {
+  try {
+    if (!dados.cliente || !dados.tipo || !dados.data || !dados.campanha) {
+      return { ok: false, erro: 'Campos obrigatórios faltando.' };
+    }
+    const ss    = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_CAMPANHAS);
+
+    const dt     = new Date(dados.data + 'T12:00:00');
+    const mesAno = `${String(dt.getMonth() + 1).padStart(2,'0')}/${dt.getFullYear()}`;
+
+    sheet.appendRow([
+      dados.cliente, dados.tipo, mesAno, dt,
+      dados.campanha, STATUS_PENDENTE, STATUS_PENDENTE, STATUS_PENDENTE,
+      '🔴 Aguardando insumos', dados.linkDrive || '', '', dados.obs || '',
+    ]);
+
+    const newRow = sheet.getLastRow();
+    sheet.getRange(newRow, COL.DATA).setNumberFormat('dd/MM/yyyy');
+
+    try { enviarBriefing(newRow); } catch(e) { console.error('Briefing erro:', e); }
+
+    return { ok: true, row: newRow };
+  } catch(e) {
+    return { ok: false, erro: e.message };
+  }
 }
 
 function confirmarEntrega(params) {
@@ -270,98 +329,3 @@ function gerarToken(row, campo) {
 }
 
 
-// ============================================================
-// SETUP: cria abas e formata planilha
-// ============================================================
-
-function configurarPlanilha() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  criarAbaSeNaoExiste(ss, SHEET_CAMPANHAS, configurarAbaCampanhas);
-  criarAbaSeNaoExiste(ss, SHEET_CLIENTES,  configurarAbaClientes);
-  criarAbaSeNaoExiste(ss, SHEET_LINKS,     configurarAbaLinks);
-  SpreadsheetApp.getUi().alert('✅ Planilha configurada com sucesso!');
-}
-
-function criarAbaSeNaoExiste(ss, nome, configurador) {
-  let sheet = ss.getSheetByName(nome);
-  if (!sheet) {
-    sheet = ss.insertSheet(nome);
-  }
-  configurador(sheet);
-}
-
-function configurarAbaCampanhas(sheet) {
-  sheet.clearContents();
-  const headers = [
-    'Cliente', 'Tipo', 'Mês-Ano', 'Data Planejada',
-    'Campanha / Assunto', 'Copy', 'Arte', 'Dados',
-    'Status Geral', 'Link Drive', 'Observações'
-  ];
-  const hrng = sheet.getRange(1, 1, 1, headers.length);
-  hrng.setValues([headers]);
-  hrng.setBackground('#2C3E50').setFontColor('#FFFFFF').setFontWeight('bold').setFontSize(11);
-
-  // Larguras
-  sheet.setColumnWidth(1, 100); // Cliente
-  sheet.setColumnWidth(2, 110); // Tipo
-  sheet.setColumnWidth(3, 90);  // Mês-Ano
-  sheet.setColumnWidth(4, 120); // Data
-  sheet.setColumnWidth(5, 260); // Campanha
-  sheet.setColumnWidth(6, 70);  // Copy
-  sheet.setColumnWidth(7, 70);  // Arte
-  sheet.setColumnWidth(8, 70);  // Dados
-  sheet.setColumnWidth(9, 180); // Status
-  sheet.setColumnWidth(10, 200);// Link Drive
-  sheet.setColumnWidth(11, 200);// Obs
-
-  // Validação: coluna Tipo
-  const tiposValidos = ['email', 'instagram', 'whatsapp', 'sms', 'outros'];
-  const regra = SpreadsheetApp.newDataValidation()
-    .requireValueInList(tiposValidos, true)
-    .setAllowInvalid(false).build();
-  sheet.getRange(2, COL.TIPO, 200).setDataValidation(regra);
-
-  // Centraliza colunas de status
-  sheet.getRange(1, COL.COPY, 200, 4).setHorizontalAlignment('center');
-
-  sheet.setFrozenRows(1);
-}
-
-function configurarAbaClientes(sheet) {
-  sheet.clearContents();
-  const headers = [
-    'Slug', 'Nome Completo', 'Email Operador',
-    'Email Copy', 'Email Arte', 'Email Dados', 'Email Aprovador'
-  ];
-  const hrng = sheet.getRange(1, 1, 1, headers.length);
-  hrng.setValues([headers]);
-  hrng.setBackground('#2C3E50').setFontColor('#FFFFFF').setFontWeight('bold');
-
-  // Exemplo pré-carregado
-  const exemplos = [
-    ['afesu',  'AFESU',          'barbara.aquino@timecaptacao.com.br', '', '', '', ''],
-    ['leao',   'Instituto Leão', 'operador@leao.org.br',               '', '', '', ''],
-  ];
-  sheet.getRange(2, 1, exemplos.length, exemplos[0].length).setValues(exemplos);
-  sheet.setColumnWidth(1, 100);
-  sheet.setColumnWidth(2, 180);
-  [3,4,5,6,7].forEach(c => sheet.setColumnWidth(c, 220));
-  sheet.setFrozenRows(1);
-}
-
-function configurarAbaLinks(sheet) {
-  sheet.clearContents();
-  const headers = ['Cliente', 'Nome Completo', 'Link Calendário HTML', 'Link Pasta Drive'];
-  const hrng = sheet.getRange(1, 1, 1, headers.length);
-  hrng.setValues([headers]);
-  hrng.setBackground('#2C3E50').setFontColor('#FFFFFF').setFontWeight('bold');
-  sheet.setColumnWidth(1, 100);
-  sheet.setColumnWidth(2, 180);
-  sheet.setColumnWidth(3, 340);
-  sheet.setColumnWidth(4, 300);
-  sheet.setFrozenRows(1);
-
-  // Instrução
-  sheet.getRange(2, 1).setValue('← Preencha após publicar o webapp');
-  sheet.getRange(2, 1).setFontColor('#999999').setFontStyle('italic');
-}

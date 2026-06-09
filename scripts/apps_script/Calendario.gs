@@ -63,9 +63,9 @@ function getCampanhasDoMes(sheet, clienteSlug, ano, mes) {
   const result = [];
 
   for (let i = 1; i < dados.length; i++) {
-    const row     = dados[i];
-    const cliente = row[COL.CLIENTE - 1];
-    const data    = row[COL.DATA - 1];
+    const linha   = dados[i];
+    const cliente = linha[COL.CLIENTE - 1];
+    const data    = linha[COL.DATA - 1];
 
     if (!cliente || !data) continue;
     if (clienteSlug && cliente.toString().toLowerCase() !== clienteSlug.toLowerCase()) continue;
@@ -74,19 +74,23 @@ function getCampanhasDoMes(sheet, clienteSlug, ano, mes) {
     if (isNaN(dt.getTime())) continue;
     if (dt.getFullYear() !== ano || (dt.getMonth() + 1) !== mes) continue;
 
-    const tipo   = (row[COL.TIPO - 1] || 'outros').toString().toLowerCase();
-    const status = row[COL.STATUS - 1] || '';
+    const tipo   = (linha[COL.TIPO - 1] || 'outros').toString().toLowerCase();
+    const status = linha[COL.STATUS - 1] || '';
 
     result.push({
+      rowNum:    i + 1,
       dia:       dt.getDate(),
+      dataStr:   Utilities.formatDate(dt, Session.getScriptTimeZone(), 'dd/MM/yyyy'),
       cliente:   cliente.toString(),
       tipo:      tipo,
-      campanha:  row[COL.CAMPANHA - 1] || '',
-      copy:      row[COL.COPY - 1] || '⏳',
-      arte:      row[COL.ARTE - 1] || '⏳',
-      dados:     row[COL.DADOS - 1] || '⏳',
+      campanha:  linha[COL.CAMPANHA - 1] || '',
+      copy:      linha[COL.COPY - 1] || '⏳',
+      arte:      linha[COL.ARTE - 1] || '⏳',
+      dados:     linha[COL.DADOS - 1] || '⏳',
       status:    status,
-      linkDrive: row[COL.LINK_DRIVE - 1] || '',
+      linkDrive: linha[COL.LINK_DRIVE - 1] || '',
+      linkHtml:  linha[COL.LINK_HTML - 1] || '',
+      obs:       linha[COL.OBS - 1] || '',
     });
   }
 

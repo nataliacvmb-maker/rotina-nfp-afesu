@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Portal de Campanhas NFP</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;color:#1f2937;min-height:100vh}
+
+/* HEADER */
+.header{
+  background:linear-gradient(135deg,#1a252f 0%,#2c3e50 100%);
+  color:#fff;padding:14px 24px;
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+}
+.header-brand h1{font-size:18px;font-weight:700;letter-spacing:-.2px}
+.header-brand small{font-size:11px;color:#94a3b8;display:block;margin-top:1px}
+.header-nav{display:flex;align-items:center;gap:8px;margin:0 auto}
+.mes-label{font-size:16px;font-weight:600;min-width:150px;text-align:center}
+.btn-nav{
+  background:rgba(255,255,255,.12);border:none;color:#fff;
+  width:34px;height:34px;border-radius:8px;cursor:pointer;
+  font-size:17px;display:flex;align-items:center;justify-content:center;
+  transition:background .15s;
+}
+.btn-nav:hover{background:rgba(255,255,255,.22)}
+.header-actions{display:flex;align-items:center;gap:10px}
+.select-cliente{
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
+  color:#fff;padding:7px 10px;border-radius:8px;font-size:13px;cursor:pointer;
+}
+.select-cliente option{background:#2c3e50}
+.btn-add{
+  background:#3b82f6;color:#fff;border:none;
+  padding:8px 16px;border-radius:8px;cursor:pointer;
+  font-size:13px;font-weight:600;white-space:nowrap;
+  transition:background .15s;
+}
+.btn-add:hover{background:#2563eb}
+
+/* LEGENDA */
+.legenda{
+  display:flex;gap:14px;flex-wrap:wrap;
+  padding:9px 24px;background:#fff;
+  border-bottom:1px solid #e5e7eb;min-height:38px;
+}
+.leg-item{display:flex;align-items:center;gap:6px;font-size:12px;color:#4b5563}
+.leg-dot{width:14px;height:14px;border-radius:4px;flex-shrink:0}
+
+/* LOADING */
+.loading{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:80px 20px;gap:14px;color:#6b7280;
+}
+.spinner{
+  width:38px;height:38px;border:3px solid #e5e7eb;
+  border-top-color:#3b82f6;border-radius:50%;
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* CALENDÁRIO */
+.cal-wrapper{max-width:1240px;margin:20px auto;padding:0 16px 48px}
+.cal-grid{
+  display:grid;grid-template-columns:repeat(7,1fr);
+  gap:2px;background:#d1d5db;
+  border-radius:12px;overflow:hidden;
+  box-shadow:0 2px 14px rgba(0,0,0,.07);
+}
+.dia-header{
+  background:#374151;color:#d1d5db;
+  text-align:center;padding:10px 4px;
+  font-size:11px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.5px;
+}
+.dia-cell{
+  background:#fff;min-height:130px;
+  padding:8px 6px 6px;
+  display:flex;flex-direction:column;gap:3px;
+  cursor:pointer;transition:background .1s;
+}
+.dia-cell:hover{background:#f9fafb}
+.dia-cell.outro-mes{background:#f9fafb;cursor:default}
+.dia-cell.fim-semana{background:#fafafa}
+.dia-cell.hoje{background:#fffbeb;outline:2px solid #f59e0b;outline-offset:-2px}
+.dia-num{
+  font-size:12px;font-weight:600;color:#9ca3af;
+  margin-bottom:2px;line-height:1;user-select:none;
+}
+.dia-num.hoje-num{color:#d97706;font-size:13px}
+.dia-cell.outro-mes .dia-num{color:#e5e7eb}
+
+/* CARDS */
+.card{
+  border-radius:5px;padding:4px 7px;
+  font-size:11px;display:flex;align-items:center;gap:4px;
+  cursor:pointer;overflow:hidden;user-select:none;
+  transition:filter .12s,transform .1s;
+  line-height:1.3;
+}
+.card:hover{filter:brightness(.93);transform:translateX(1px)}
+.card-emoji{flex-shrink:0}
+.card-nome{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.card-status{flex-shrink:0;font-size:10px}
+.card-mais{
+  background:#f3f4f6!important;color:#6b7280!important;
+  border-left:3px solid #9ca3af!important;
+  justify-content:center;font-style:italic;
+}
+
+/* MODAL OVERLAY */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);
+  display:none;align-items:center;justify-content:center;
+  z-index:1000;padding:20px;
+}
+.modal-overlay.open{display:flex}
+.modal{
+  background:#fff;border-radius:14px;
+  width:100%;max-width:500px;
+  box-shadow:0 24px 64px rgba(0,0,0,.22);
+  position:relative;overflow:hidden;
+  max-height:92vh;overflow-y:auto;
+}
+.modal-close{
+  position:absolute;top:12px;right:14px;
+  background:none;border:none;font-size:24px;
+  cursor:pointer;color:#9ca3af;z-index:2;line-height:1;
+}
+.modal-close:hover{color:#374151}
+
+/* MODAL DETALHE */
+.modal-barra{height:6px;width:100%}
+.modal-det-body{padding:20px 24px 26px}
+.modal-det-body h2{font-size:17px;color:#111827;margin-bottom:16px;padding-right:28px;line-height:1.3}
+.det-table{width:100%;border-collapse:collapse;font-size:14px}
+.det-table tr td{padding:6px 0;vertical-align:top}
+.det-table tr td:first-child{color:#6b7280;font-weight:500;width:72px;white-space:nowrap}
+.det-table tr td:last-child{color:#1f2937}
+.btn-drive{
+  display:inline-flex;align-items:center;gap:5px;
+  color:#2563eb;text-decoration:none;font-size:13px;
+}
+.btn-drive:hover{text-decoration:underline}
+
+/* MODAL FORMULÁRIO */
+.modal-form-header{
+  background:#1e293b;color:#fff;
+  padding:18px 24px;font-size:17px;font-weight:700;
+}
+.form-body{padding:20px 24px 0}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.fg label{font-size:13px;font-weight:600;color:#374151}
+.fg input,.fg select,.fg textarea{
+  border:1px solid #d1d5db;border-radius:8px;
+  padding:9px 12px;font-size:14px;color:#1f2937;
+  transition:border-color .15s;font-family:inherit;
+}
+.fg input:focus,.fg select:focus,.fg textarea:focus{
+  outline:none;border-color:#3b82f6;
+  box-shadow:0 0 0 3px rgba(59,130,246,.12);
+}
+.fg textarea{resize:vertical}
+.fg .optional{color:#9ca3af;font-weight:400}
+.form-actions{
+  display:flex;justify-content:flex-end;gap:10px;
+  padding:16px 24px;border-top:1px solid #f3f4f6;margin-top:6px;
+}
+.btn-cancel{
+  background:#f3f4f6;color:#374151;border:none;
+  padding:9px 18px;border-radius:8px;cursor:pointer;font-size:14px;
+}
+.btn-cancel:hover{background:#e5e7eb}
+.btn-submit{
+  background:#3b82f6;color:#fff;border:none;
+  padding:9px 20px;border-radius:8px;cursor:pointer;
+  font-size:14px;font-weight:600;transition:background .15s;
+}
+.btn-submit:hover{background:#2563eb}
+.btn-submit:disabled{background:#93c5fd;cursor:default}
+
+/* TOAST */
+#toasts{
+  position:fixed;bottom:22px;right:22px;z-index:9999;
+  display:flex;flex-direction:column;gap:8px;
+}
+.toast{
+  background:#1f2937;color:#fff;padding:12px 18px;
+  border-radius:9px;font-size:14px;min-width:280px;
+  box-shadow:0 4px 18px rgba(0,0,0,.2);
+  opacity:0;transform:translateX(14px);
+  transition:opacity .28s,transform .28s;pointer-events:none;
+}
+.toast.show{opacity:1;transform:translateX(0)}
+.toast.erro{background:#dc2626}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .header{padding:12px 14px}
+  .header-nav{order:3;width:100%;justify-content:center}
+  .cal-wrapper{padding:0 6px 32px}
+  .dia-cell{min-height:80px;padding:5px 3px 4px}
+  .card{font-size:10px;padding:3px 5px}
+  .form-row{grid-template-columns:1fr}
+  .modal{max-width:100%}
+}
+</style>
+</head>
+<body>
+
+<div id="toasts"></div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-brand">
+    <h1>📅 Portal de Campanhas</h1>
+    <small>Comunicação NFP — Time Captação</small>
+  </div>
+  <div class="header-nav">
+    <button class="btn-nav" onclick="navMes(-1)">&#8592;</button>
+    <span class="mes-label" id="mesLabel">…</span>
+    <button class="btn-nav" onclick="navMes(1)">&#8594;</button>
+  </div>
+  <div class="header-actions">
+    <select class="select-cliente" id="selCliente" onchange="filtrarCliente()">
+      <option value="">Todos os clientes</option>
+    </select>
+    <button class="btn-add" onclick="abrirForm(null)">+ Nova Campanha</button>
+  </div>
+</header>
+
+<!-- LEGENDA CLIENTES -->
+<div class="legenda" id="legenda"></div>
+
+<!-- LOADING -->
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <p>Carregando campanhas…</p>
+</div>
+
+<!-- CALENDÁRIO -->
+<main class="cal-wrapper" id="calWrapper" style="display:none">
+  <div class="cal-grid" id="calGrid"></div>
+</main>
+
+<!-- ── MODAL DETALHE ── -->
+<div class="modal-overlay" id="overlayDet" onclick="fecharModal('overlayDet',event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="fecharModal('overlayDet')">×</button>
+    <div class="modal-barra" id="detBarra"></div>
+    <div class="modal-det-body">
+      <h2 id="detTitulo"></h2>
+      <table class="det-table">
+        <tr><td>Cliente</td><td id="dCliente"></td></tr>
+        <tr><td>Data</td><td id="dData"></td></tr>
+        <tr><td>Tipo</td><td id="dTipo"></td></tr>
+        <tr><td>Status</td><td id="dStatus"></td></tr>
+        <tr><td>Copy</td><td id="dCopy"></td></tr>
+        <tr><td>Arte</td><td id="dArte"></td></tr>
+        <tr><td>Dados</td><td id="dDados"></td></tr>
+        <tr id="drDrive"><td>Drive</td><td id="dDrive"></td></tr>
+        <tr id="drObs" style="display:none"><td>Obs</td><td id="dObs"></td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL FORMULÁRIO ── -->
+<div class="modal-overlay" id="overlayForm" onclick="fecharModal('overlayForm',event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="fecharModal('overlayForm')">×</button>
+    <div class="modal-form-header">✏️ Nova Campanha</div>
+    <div class="form-body">
+      <form id="formCamp" onsubmit="submeter(event)">
+        <div class="form-row">
+          <div class="fg">
+            <label>Cliente *</label>
+            <select id="fCliente" required>
+              <option value="">Selecione…</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Tipo *</label>
+            <select id="fTipo" required>
+              <option value="email">📧 Email</option>
+              <option value="instagram">📸 Instagram</option>
+              <option value="whatsapp">💬 WhatsApp</option>
+              <option value="sms">📱 SMS</option>
+              <option value="outros">📌 Outros</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg">
+          <label>Data planejada *</label>
+          <input type="date" id="fData" required style="max-width:220px">
+        </div>
+        <div class="fg">
+          <label>Campanha / Assunto *</label>
+          <input type="text" id="fCampanha" placeholder="Ex: Email de boas-vindas março" required>
+        </div>
+        <div class="fg">
+          <label>Link Drive <span class="optional">(opcional)</span></label>
+          <input type="url" id="fDrive" placeholder="https://drive.google.com/…">
+        </div>
+        <div class="fg">
+          <label>Observações <span class="optional">(opcional)</span></label>
+          <textarea id="fObs" rows="3" placeholder="Informações adicionais para as equipes…"></textarea>
+        </div>
+      </form>
+    </div>
+    <div class="form-actions">
+      <button class="btn-cancel" onclick="fecharModal('overlayForm')">Cancelar</button>
+      <button class="btn-submit" id="btnSubmit" onclick="submeter(event)">Criar Campanha</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── PALETA POR CLIENTE (atribuída na ordem da aba CLIENTES) ──
+const PALETA = [
+  ['#DBEAFE','#2563EB','#1E40AF'],
+  ['#FEF3C7','#D97706','#92400E'],
+  ['#D1FAE5','#059669','#065F46'],
+  ['#EDE9FE','#7C3AED','#4C1D95'],
+  ['#FFE4E6','#E11D48','#881337'],
+  ['#FFEDD5','#EA580C','#7C2D12'],
+  ['#CFFAFE','#0891B2','#164E63'],
+  ['#FDF2F8','#C026D3','#701A75'],
+];
+const EMOJI = {email:'📧',instagram:'📸',whatsapp:'💬',sms:'📱',outros:'📌'};
+const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+               'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+// ── ESTADO ──
+let anoAtual, mesAtual, clienteAtual = '';
+let listaClientes = [], campanhas = [];
+let coresMap = {}; // { slug: [bg, borda, texto] }
+
+// ── INIT ──
+(function(){
+  const h = new Date();
+  anoAtual = h.getFullYear();
+  mesAtual = h.getMonth() + 1;
+  carregar();
+})();
+
+// ── CARREGA DADOS ──
+function carregar() {
+  setLoading(true);
+  const mp = anoAtual + '-' + String(mesAtual).padStart(2,'0');
+  google.script.run
+    .withSuccessHandler(render)
+    .withFailureHandler(function(e){ setLoading(false); toast('Erro: '+e.message,'erro'); })
+    .getDadosPortal(clienteAtual, mp);
+}
+
+// ── RENDERIZA ──
+function render(d) {
+  listaClientes = d.clientes || [];
+  campanhas     = d.campanhas || [];
+  anoAtual      = d.ano;
+  mesAtual      = d.mes;
+
+  // mapa de cores
+  coresMap = {};
+  listaClientes.forEach(function(c,i){ coresMap[c.slug.toLowerCase()] = PALETA[i % PALETA.length]; });
+
+  document.getElementById('mesLabel').textContent = MESES[mesAtual-1] + ' ' + anoAtual;
+
+  renderLegenda();
+  renderFiltro();
+  renderCal();
+  setLoading(false);
+}
+
+function renderLegenda() {
+  document.getElementById('legenda').innerHTML = listaClientes.map(function(c,i){
+    var cor = PALETA[i % PALETA.length];
+    return '<div class="leg-item"><div class="leg-dot" style="background:'+cor[0]+';border:2px solid '+cor[1]+'"></div><span>'+c.nome+'</span></div>';
+  }).join('');
+}
+
+function renderFiltro() {
+  var sel = document.getElementById('selCliente');
+  var val = clienteAtual;
+  sel.innerHTML = '<option value="">Todos os clientes</option>' +
+    listaClientes.map(function(c){ return '<option value="'+c.slug+'">'+c.nome+'</option>'; }).join('');
+  sel.value = val;
+}
+
+function renderCal() {
+  var hoje = new Date();
+  var primeiroDia = new Date(anoAtual, mesAtual-1, 1);
+  var totalDias   = new Date(anoAtual, mesAtual, 0).getDate();
+  var dow         = primeiroDia.getDay();
+
+  // agrupa por dia
+  var porDia = {};
+  campanhas.forEach(function(c){ (porDia[c.dia] = porDia[c.dia]||[]).push(c); });
+
+  var html = '';
+  var dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  dias.forEach(function(d){ html += '<div class="dia-header">'+d+'</div>'; });
+
+  for (var i=0; i<dow; i++) html += '<div class="dia-cell outro-mes"></div>';
+
+  for (var dia=1; dia<=totalDias; dia++) {
+    var eHoje = hoje.getFullYear()===anoAtual && (hoje.getMonth()+1)===mesAtual && hoje.getDate()===dia;
+    var ds = (dow+dia-1)%7;
+    var cls = 'dia-cell'+(eHoje?' hoje':'')+(ds===0||ds===6?' fim-semana':'');
+    var dataISO = anoAtual+'-'+pad(mesAtual)+'-'+pad(dia);
+
+    html += '<div class="'+cls+'" onclick="clicouDia(\''+dataISO+'\',event)">';
+    html += '<div class="dia-num'+(eHoje?' hoje-num':'')+'">'+dia+'</div>';
+
+    var camps = porDia[dia]||[];
+    var MAX = 4;
+    camps.slice(0,MAX).forEach(function(c){
+      var idx = campanhas.indexOf(c);
+      var cor = coresMap[c.cliente.toLowerCase()] || ['#F3F4F6','#9CA3AF','#374151'];
+      var em  = EMOJI[c.tipo]||'📌';
+      var ic  = c.status.indexOf('Pronto')>=0?'✅':c.status.indexOf('Bloqueado')>=0?'🔴':'⏳';
+      var nm  = c.campanha.length>21 ? c.campanha.slice(0,19)+'…' : c.campanha;
+      html += '<div class="card" style="background:'+cor[0]+';border-left:3px solid '+cor[1]+';color:'+cor[2]+'" onclick="verDetalhe(event,'+idx+')">';
+      html += '<span class="card-emoji">'+em+'</span><span class="card-nome">'+nm+'</span><span class="card-status">'+ic+'</span></div>';
+    });
+    if (camps.length>MAX) {
+      html += '<div class="card card-mais">+' + (camps.length-MAX) + ' mais</div>';
+    }
+    html += '</div>';
+  }
+
+  var rest = (7-((dow+totalDias)%7))%7;
+  for (var j=0; j<rest; j++) html += '<div class="dia-cell outro-mes"></div>';
+
+  document.getElementById('calGrid').innerHTML = html;
+  document.getElementById('calWrapper').style.display = '';
+}
+
+// ── NAVEGAÇÃO ──
+function navMes(delta) {
+  mesAtual += delta;
+  if (mesAtual>12){ mesAtual=1; anoAtual++; }
+  if (mesAtual<1) { mesAtual=12; anoAtual--; }
+  carregar();
+}
+
+function filtrarCliente() {
+  clienteAtual = document.getElementById('selCliente').value;
+  carregar();
+}
+
+// ── MODAL DETALHE ──
+function verDetalhe(event, idx) {
+  event.stopPropagation();
+  var c = campanhas[idx];
+  if (!c) return;
+
+  var cidx = listaClientes.findIndex(function(cl){ return cl.slug.toLowerCase()===c.cliente.toLowerCase(); });
+  var cor  = cidx>=0 ? PALETA[cidx%PALETA.length] : ['#E5E7EB','#9CA3AF','#374151'];
+
+  document.getElementById('detBarra').style.background = cor[1];
+  document.getElementById('detTitulo').textContent = c.campanha;
+  document.getElementById('dCliente').textContent  = c.cliente;
+  document.getElementById('dData').textContent     = c.dataStr || 'Dia '+c.dia;
+  document.getElementById('dTipo').textContent     = (EMOJI[c.tipo]||'📌')+' '+c.tipo;
+  document.getElementById('dStatus').textContent   = c.status;
+  document.getElementById('dCopy').textContent     = c.copy;
+  document.getElementById('dArte').textContent     = c.arte;
+  document.getElementById('dDados').textContent    = c.dados;
+
+  if (c.linkDrive) {
+    document.getElementById('dDrive').innerHTML = '<a class="btn-drive" href="'+c.linkDrive+'" target="_blank">📁 Abrir no Drive</a>';
+  } else {
+    document.getElementById('dDrive').textContent = '—';
+  }
+
+  var trObs = document.getElementById('drObs');
+  if (c.obs) {
+    trObs.style.display = '';
+    document.getElementById('dObs').textContent = c.obs;
+  } else {
+    trObs.style.display = 'none';
+  }
+
+  document.getElementById('overlayDet').classList.add('open');
+}
+
+// ── MODAL FORMULÁRIO ──
+function clicouDia(dataISO, event) {
+  if (event.target.closest('.card')) return;
+  abrirForm(dataISO);
+}
+
+function abrirForm(dataISO) {
+  var sel = document.getElementById('fCliente');
+  sel.innerHTML = '<option value="">Selecione…</option>' +
+    listaClientes.map(function(c){ return '<option value="'+c.slug+'">'+c.nome+'</option>'; }).join('');
+
+  var hoje = new Date();
+  document.getElementById('fData').value     = dataISO || (hoje.toISOString().slice(0,10));
+  document.getElementById('fCampanha').value = '';
+  document.getElementById('fDrive').value    = '';
+  document.getElementById('fObs').value      = '';
+  document.getElementById('fTipo').value     = 'email';
+  document.getElementById('fCliente').value  = '';
+  var btn = document.getElementById('btnSubmit');
+  btn.disabled = false;
+  btn.textContent = 'Criar Campanha';
+
+  document.getElementById('overlayForm').classList.add('open');
+  setTimeout(function(){ document.getElementById('fCliente').focus(); }, 100);
+}
+
+function submeter(event) {
+  event.preventDefault();
+  var cliente  = document.getElementById('fCliente').value;
+  var tipo     = document.getElementById('fTipo').value;
+  var data     = document.getElementById('fData').value;
+  var campanha = document.getElementById('fCampanha').value.trim();
+  var linkDrive= document.getElementById('fDrive').value.trim();
+  var obs      = document.getElementById('fObs').value.trim();
+
+  if (!cliente){ toast('Selecione o cliente.','erro'); return; }
+  if (!campanha){ toast('Informe o nome da campanha.','erro'); return; }
+
+  var btn = document.getElementById('btnSubmit');
+  btn.disabled = true;
+  btn.textContent = 'Salvando…';
+
+  google.script.run
+    .withSuccessHandler(function(r){
+      if (r.ok){
+        fecharModal('overlayForm');
+        toast('✅ Campanha criada! Emails enviados às equipes.');
+        carregar();
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Criar Campanha';
+        toast('Erro: '+r.erro,'erro');
+      }
+    })
+    .withFailureHandler(function(e){
+      btn.disabled = false;
+      btn.textContent = 'Criar Campanha';
+      toast('Erro ao salvar: '+e.message,'erro');
+    })
+    .criarCampanhaPortal({cliente:cliente,tipo:tipo,data:data,campanha:campanha,linkDrive:linkDrive,obs:obs});
+}
+
+// ── UTILITÁRIOS ──
+function fecharModal(id, event) {
+  if (event && event.target.id !== id) return;
+  document.getElementById(id).classList.remove('open');
+}
+
+function setLoading(show) {
+  document.getElementById('loading').style.display = show ? 'flex' : 'none';
+  if (show) document.getElementById('calWrapper').style.display = 'none';
+}
+
+function toast(msg, tipo) {
+  var c = document.getElementById('toasts');
+  var el = document.createElement('div');
+  el.className = 'toast'+(tipo==='erro'?' erro':'');
+  el.textContent = msg;
+  c.appendChild(el);
+  setTimeout(function(){ el.classList.add('show'); }, 10);
+  setTimeout(function(){
+    el.classList.remove('show');
+    setTimeout(function(){ if(el.parentNode) c.removeChild(el); }, 350);
+  }, 4200);
+}
+
+function pad(n){ return String(n).padStart(2,'0'); }
+</script>
+</body>
+</html>
