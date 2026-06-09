@@ -263,7 +263,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f2f5;color:#1f2937;mi
         <tr id="drDrive"><td>Drive</td><td id="dDrive"></td></tr>
         <tr id="drObs" style="display:none"><td>Obs</td><td id="dObs"></td></tr>
       </table>
-      <div id="detActions" style="margin-top:18px;padding-top:14px;border-top:1px solid #f3f4f6;text-align:right">
+      <div id="detActions" style="margin-top:18px;padding-top:14px;border-top:1px solid #f3f4f6;display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="editarCampanha()" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px">Editar</button>
         <button onclick="mostrarConfirmacaoCancelar()" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px">Cancelar campanha</button>
       </div>
       <div id="detConfirm" style="display:none;margin-top:14px">
@@ -351,6 +352,8 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
 let anoAtual, mesAtual, clienteAtual = '';
 let listaClientes = [], campanhas = [];
 let detalheRowNum = null;
+let campanhaDetalhe = null;
+let editando = null; // rowNum sendo editado, ou null para nova campanha
 let coresMap = {}; // { slug: [bg, borda, texto] }
 
 // ── INIT ──
@@ -474,6 +477,7 @@ function verDetalhe(event, idx) {
   if (!c) return;
 
   detalheRowNum = c.rowNum || null;
+  campanhaDetalhe = c;
   document.getElementById('detConfirm').style.display = 'none';
   document.getElementById('detActions').style.display = '';
 
@@ -513,25 +517,53 @@ function clicouDia(dataISO, event) {
   abrirForm(dataISO);
 }
 
-function abrirForm(dataISO) {
+function abrirForm(dataISO, camp) {
+  editando = camp ? (camp.rowNum || null) : null;
+
   var sel = document.getElementById('fCliente');
   sel.innerHTML = '<option value="">Selecione…</option>' +
     listaClientes.map(function(c){ return '<option value="'+c.slug+'">'+c.nome+'</option>'; }).join('');
 
   var hoje = new Date();
-  document.getElementById('fData').value     = dataISO || (hoje.toISOString().slice(0,10));
-  document.getElementById('fCampanha').value = '';
-  document.getElementById('fObs').value      = '';
-  document.getElementById('fBase').value     = '';
-  document.getElementById('fTipo').value     = 'email';
-  document.getElementById('fCliente').value  = '';
-  document.getElementById('fgBase').style.display = ''; // email é default
+  if (camp) {
+    // pré-preenche com dados existentes
+    var ano = anoAtual, mes = pad(mesAtual), dia = pad(camp.dia);
+    document.getElementById('fData').value     = ano + '-' + mes + '-' + dia;
+    document.getElementById('fCampanha').value = camp.campanha || '';
+    document.getElementById('fTipo').value     = camp.tipo || 'email';
+    document.getElementById('fCliente').value  = camp.cliente || '';
+    document.getElementById('fObs').value      = camp.obs || '';
+    document.getElementById('fBase').value     = '';
+    // bloqueia cliente (não faz sentido trocar)
+    sel.disabled = true;
+  } else {
+    document.getElementById('fData').value     = dataISO || (hoje.toISOString().slice(0,10));
+    document.getElementById('fCampanha').value = '';
+    document.getElementById('fObs').value      = '';
+    document.getElementById('fBase').value     = '';
+    document.getElementById('fTipo').value     = 'email';
+    document.getElementById('fCliente').value  = '';
+    sel.disabled = false;
+  }
+
+  var tipo = document.getElementById('fTipo').value;
+  document.getElementById('fgBase').style.display = tipo === 'email' ? '' : 'none';
+
+  var header = document.querySelector('.modal-form-header');
+  header.textContent = camp ? 'Editar Campanha' : 'Nova Campanha';
+
   var btn = document.getElementById('btnSubmit');
   btn.disabled = false;
-  btn.textContent = 'Criar Campanha';
+  btn.textContent = camp ? 'Salvar alterações' : 'Criar Campanha';
 
   document.getElementById('overlayForm').classList.add('open');
-  setTimeout(function(){ document.getElementById('fCliente').focus(); }, 100);
+  setTimeout(function(){ document.getElementById('fCampanha').focus(); }, 100);
+}
+
+function editarCampanha() {
+  if (!campanhaDetalhe) return;
+  fecharModal('overlayDet');
+  abrirForm(null, campanhaDetalhe);
 }
 
 function submeter(event) {
@@ -550,24 +582,37 @@ function submeter(event) {
   btn.disabled = true;
   btn.textContent = 'Salvando…';
 
-  google.script.run
-    .withSuccessHandler(function(r){
-      if (r.ok){
-        fecharModal('overlayForm');
-        toast('Campanha criada! Emails enviados às equipes.');
-        carregar();
-      } else {
-        btn.disabled = false;
-        btn.textContent = 'Criar Campanha';
-        toast('Erro: '+r.erro,'erro');
-      }
-    })
-    .withFailureHandler(function(e){
-      btn.disabled = false;
-      btn.textContent = 'Criar Campanha';
-      toast('Erro ao salvar: '+e.message,'erro');
-    })
-    .criarCampanhaPortal({cliente:cliente,tipo:tipo,data:data,campanha:campanha,obs:obs,instrucaoBase:instrucaoBase});
+  var isEdicao = !!editando;
+
+  function onSucesso(r) {
+    btn.disabled = false;
+    btn.textContent = isEdicao ? 'Salvar alterações' : 'Criar Campanha';
+    if (r.ok) {
+      fecharModal('overlayForm');
+      toast(isEdicao ? 'Campanha atualizada!' : 'Campanha criada! Emails enviados às equipes.');
+      carregar();
+    } else {
+      toast('Erro: '+r.erro,'erro');
+    }
+  }
+
+  function onErro(e) {
+    btn.disabled = false;
+    btn.textContent = isEdicao ? 'Salvar alterações' : 'Criar Campanha';
+    toast('Erro: '+e.message,'erro');
+  }
+
+  if (isEdicao) {
+    google.script.run
+      .withSuccessHandler(onSucesso)
+      .withFailureHandler(onErro)
+      .editarCampanhaPortal({rowNum:editando,tipo:tipo,data:data,campanha:campanha,obs:obs,instrucaoBase:instrucaoBase});
+  } else {
+    google.script.run
+      .withSuccessHandler(onSucesso)
+      .withFailureHandler(onErro)
+      .criarCampanhaPortal({cliente:cliente,tipo:tipo,data:data,campanha:campanha,obs:obs,instrucaoBase:instrucaoBase});
+  }
 }
 
 // ── CANCELAMENTO ──

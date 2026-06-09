@@ -286,6 +286,39 @@ function criarCampanhaPortal(dados) {
 
 
 // ============================================================
+// EDITA CAMPANHA EXISTENTE
+// ============================================================
+
+function editarCampanhaPortal(dados) {
+  try {
+    const rowNum = parseInt(dados.rowNum);
+    if (!rowNum || rowNum < 2) return { ok: false, erro: 'Linha inválida.' };
+
+    const ss    = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_CAMPANHAS);
+
+    const dt     = new Date(dados.data + 'T12:00:00');
+    const mesAno = String(dt.getMonth() + 1).padStart(2,'0') + '/' + dt.getFullYear();
+
+    sheet.getRange(rowNum, COL.MES_ANO).setNumberFormat('@');
+    sheet.getRange(rowNum, COL.DATA).setNumberFormat('dd/MM/yyyy');
+
+    sheet.getRange(rowNum, COL.TIPO).setValue(dados.tipo);
+    sheet.getRange(rowNum, COL.MES_ANO).setValue(mesAno);
+    sheet.getRange(rowNum, COL.DATA).setValue(dt);
+    sheet.getRange(rowNum, COL.CAMPANHA).setValue(dados.campanha);
+
+    const obs = [dados.obs || '', dados.instrucaoBase ? 'Base: ' + dados.instrucaoBase : ''].filter(Boolean).join(' | ');
+    sheet.getRange(rowNum, COL.OBS).setValue(obs);
+
+    return { ok: true };
+  } catch(e) {
+    return { ok: false, erro: e.message };
+  }
+}
+
+
+// ============================================================
 // CANCELA CAMPANHA E NOTIFICA EQUIPES
 // ============================================================
 
