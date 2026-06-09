@@ -54,12 +54,14 @@ def _gs_files(apps_script_dir: Path) -> list:
                 "type": "SERVER_JS",
                 "source": path.read_text(encoding="utf-8"),
             })
-    for html_file in sorted((apps_script_dir).glob("*.html")):
-        files.append({
-            "name": html_file.stem,
-            "type": "HTML",
-            "source": html_file.read_text(encoding="utf-8"),
-        })
+    gs_names = {f["name"].lower() for f in files}
+    for html_file in sorted(apps_script_dir.glob("*.html")):
+        if html_file.stem.lower() not in gs_names:
+            files.append({
+                "name": html_file.stem,
+                "type": "HTML",
+                "source": html_file.read_text(encoding="utf-8"),
+            })
     return files
 
 
